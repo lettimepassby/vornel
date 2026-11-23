@@ -428,7 +428,7 @@
 {/if}
 
 {#if settingsTab}
-  <SettingsDialog initialTab={settingsTab} onclose={() => { settingsTab = null; void refreshSync(false); }} />
+  <SettingsDialog initialTab={settingsTab} onclose={() => { settingsTab = null; void refreshSync(true); }} />
 {/if}
 
 <style>
