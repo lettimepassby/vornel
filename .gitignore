@@ -19,3 +19,6 @@ Thumbs.db
 # 端到端测试
 /e2e/node_modules/
 /e2e/screenshots/
+
+# 子代理工作区
+/.claude/worktrees/
