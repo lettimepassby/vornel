@@ -1,3 +1,7 @@
+<script lang="ts" module>
+  export type View = 'hosts' | 'keys' | 'snippets' | 'forwards' | 'known';
+</script>
+
 <script lang="ts">
   import type { Host } from '../lib/api';
   import Icon from './Icon.svelte';
@@ -7,22 +11,40 @@
     hosts,
     connected,
     macInset,
+    view,
+    counts,
+    sync,
+    onview,
     onconnect,
     onedit,
     onnew,
     onsettings,
+    onsync,
     searchInput = $bindable(),
   }: {
     hosts: Host[];
     /** 已连接主机的 id */
     connected: Set<string>;
     macInset: boolean;
+    view: View;
+    counts: Record<View, number>;
+    sync: { title: string; detail: string; state: 'off' | 'ok' | 'busy' | 'err' };
+    onview: (v: View) => void;
     onconnect: (h: Host) => void;
     onedit: (h: Host) => void;
     onnew: () => void;
     onsettings: () => void;
+    onsync: () => void;
     searchInput?: HTMLInputElement;
   } = $props();
+
+  const NAV: { id: View; label: string; icon: 'host' | 'key' | 'code' | 'forward' | 'shield' }[] = [
+    { id: 'hosts', label: '主机', icon: 'host' },
+    { id: 'keys', label: '密钥串', icon: 'key' },
+    { id: 'snippets', label: '代码片段', icon: 'code' },
+    { id: 'forwards', label: '端口转发', icon: 'forward' },
+    { id: 'known', label: '已知主机', icon: 'shield' },
+  ];
 
   let query = $state('');
 
@@ -45,7 +67,7 @@
   <div class="top" class:mac={macInset} data-tauri-drag-region>
     {#if !macInset}<Logo size={18} wordmark />{/if}
     <span class="sp" data-tauri-drag-region></span>
-    <button class="icon-btn" type="button" aria-label="新建主机" title="新建主机" onclick={onnew}>
+    <button class="icon-btn" type="button" aria-label="新建主机" title="新建主机 ⌘N" onclick={onnew}>
       <Icon name="plus" />
     </button>
   </div>
@@ -57,10 +79,11 @@
   </label>
 
   <nav class="nav" aria-label="主导航">
-    <button class="ni on" type="button" aria-current="page"><Icon name="host" size={15} />主机<span class="c">{hosts.length}</span></button>
-    <button class="ni" type="button" disabled title="M2 开发中"><Icon name="key" size={15} />密钥串</button>
-    <button class="ni" type="button" disabled title="M2 开发中"><Icon name="code" size={15} />代码片段</button>
-    <button class="ni" type="button" disabled title="M2 开发中"><Icon name="forward" size={15} />端口转发</button>
+    {#each NAV as n (n.id)}
+      <button class="ni" class:on={view === n.id} type="button" aria-current={view === n.id ? 'page' : undefined} onclick={() => onview(n.id)}>
+        <Icon name={n.icon} size={15} />{n.label}<span class="c">{counts[n.id]}</span>
+      </button>
+    {/each}
   </nav>
 
   <div class="hosts">
@@ -86,8 +109,10 @@
   </div>
 
   <div class="foot">
-    <Icon name="cloud" size={16} />
-    <div class="sync"><b>同步未开启</b><span>M3 开发中</span></div>
+    <button class="sync-btn st-{sync.state}" type="button" onclick={onsync} title="立即同步">
+      <Icon name={sync.state === 'busy' ? 'refresh' : 'cloud'} size={16} />
+      <span class="sync"><b>{sync.title}</b><span>{sync.detail}</span></span>
+    </button>
     <button class="icon-btn" type="button" aria-label="设置" title="设置 ⌘," onclick={onsettings}>
       <Icon name="settings" />
     </button>
@@ -164,10 +189,6 @@
     background: none;
     color: var(--mut);
     text-align: left;
-  }
-  .ni:disabled {
-    cursor: default;
-    opacity: 0.55;
   }
   .ni.on {
     background: var(--sel);
@@ -263,8 +284,40 @@
     border-top: 1px solid var(--line);
     color: var(--mut);
   }
+  .sync-btn {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px;
+    border: 0;
+    border-radius: 7px;
+    background: none;
+    color: var(--mut);
+    text-align: left;
+  }
+  .sync-btn:hover {
+    background: var(--sel);
+  }
+  .st-ok {
+    color: var(--ok);
+  }
+  .st-err {
+    color: var(--err);
+  }
+  .st-busy :global(svg) {
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
   .sync {
     flex: 1;
+    min-width: 0;
+    color: var(--mut);
     display: flex;
     flex-direction: column;
     font-size: 12px;

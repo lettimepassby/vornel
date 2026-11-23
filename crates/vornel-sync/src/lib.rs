@@ -230,7 +230,7 @@ async fn read_optional(op: &Operator, path: &str) -> Result<Option<Vec<u8>>> {
     }
 }
 
-async fn read_manifest(op: &Operator, vault: &Vault) -> Result<BTreeMap<String, Hlc>> {
+async fn read_manifest(op: &Operator, vault: &mut Vault) -> Result<BTreeMap<String, Hlc>> {
     match read_optional(op, MANIFEST_FILE).await? {
         Some(bytes) => Ok(serde_json::from_slice(&vault.open_sealed(&bytes)?)?),
         None => Ok(BTreeMap::new()),
@@ -238,7 +238,7 @@ async fn read_manifest(op: &Operator, vault: &Vault) -> Result<BTreeMap<String, 
 }
 
 /// 检查云端状态，返回是否需要主密码（用于 UI 提前弹出输入框）。
-pub async fn needs_password(op: &Operator, vault: &Vault) -> Result<Option<bool>> {
+pub async fn needs_password(op: &Operator, vault: &mut Vault) -> Result<Option<bool>> {
     let local_id: Option<String> = vault.meta_get(META_KEY_ID)?;
     match read_optional(op, VAULT_FILE).await? {
         None => Ok(Some(true)),

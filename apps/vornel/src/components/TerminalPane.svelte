@@ -5,6 +5,7 @@
     message?: string;
     cols?: number;
     rows?: number;
+    sessionId?: string | null;
   }
 </script>
 
@@ -13,16 +14,24 @@
   import { FitAddon } from '@xterm/addon-fit';
   import { WebglAddon } from '@xterm/addon-webgl';
   import { untrack } from 'svelte';
-  import { errorText, sshClose, sshConnect, sshResize, sshWrite, type Host } from '../lib/api';
+  import * as api from '../lib/api';
+  import type { Host } from '../lib/api';
   import { ensureFamily, familyStack, findPack } from '../lib/fonts';
-  import { settings } from '../lib/settings.svelte';
+  import { prefs } from '../lib/store.svelte';
   import { badge, TERMINAL_THEMES } from '../lib/themes';
 
   let {
     host,
     active,
     onstatus,
-  }: { host: Host; active: boolean; onstatus: (s: PaneStatus) => void } = $props();
+    onhostkey,
+  }: {
+    host: Host;
+    active: boolean;
+    onstatus: (s: PaneStatus) => void;
+    /** 记录了新的主机指纹（界面需要刷新已知主机列表） */
+    onhostkey?: () => void;
+  } = $props();
 
   let container = $state<HTMLDivElement>();
   let term: Terminal | undefined;
@@ -32,39 +41,54 @@
 
   let pane = $state<PaneStatus>({ state: 'connecting' });
   let password = $state('');
+  let savePassword = $state(false);
   let passphrase = $state('');
-  let showPassphrase = $state(false);
-  let passwordInput = $state<HTMLInputElement>();
+  let ask = $state<'password' | 'passphrase' | null>(null);
+  let keyChanged = $state(false);
+  let firstInput = $state<HTMLInputElement>();
+
+  const terminalProtocols = ['ssh', 'mosh', 'telnet', 'serial'];
 
   function setStatus(s: PaneStatus) {
     pane = s;
-    onstatus({ ...s, cols: term?.cols, rows: term?.rows });
+    onstatus({ ...s, cols: term?.cols, rows: term?.rows, sessionId });
   }
 
   function target() {
-    return `${host.username}@${host.address}:${host.port}`;
+    if (host.protocol === 'serial') return host.address;
+    return `${host.username ? host.username + '@' : ''}${host.address}:${host.port}`;
   }
 
   function line(kind: 'ssh' | 'key' | 'err' | 'info', label: string, text: string) {
-    term?.write(badge(settings.theme, kind, label, text));
+    term?.write(badge(prefs.theme, kind, label, text));
+  }
+
+  /** 把文字发送到终端（代码片段等）。 */
+  export function send(text: string) {
+    if (sessionId) void api.sessionWrite(sessionId, text).catch(() => {});
+    term?.focus();
   }
 
   async function connect() {
     if (!term) return;
+    keyChanged = false;
     setStatus({ state: 'connecting' });
-    line('info', '···', `正在连接 ${target()}`);
+    line('info', '···', `正在连接 ${target()}${host.jumpHost ? '（经由跳板机）' : ''}`);
     try {
-      sessionId = await sshConnect({
+      sessionId = await api.sessionOpen({
         hostId: host.id,
-        password: host.auth.type === 'password' ? password : undefined,
+        password: ask === 'password' ? password : undefined,
         passphrase: passphrase || undefined,
+        savePassword: ask === 'password' && savePassword,
         cols: term.cols,
         rows: term.rows,
         onData: (bytes) => term?.write(bytes),
         onEvent: (ev) => {
-          if (ev.type === 'connected') {
-            line('ssh', 'SSH', `已连接 ${target()}`);
-            line('key', 'KEY', `${ev.fingerprint}${ev.newHostKey ? '  首次连接，已记录此指纹，请核对' : ''}`);
+          if (ev.type === 'hostKey') {
+            line('key', 'KEY', `${ev.host}:${ev.port}  ${ev.fingerprint}${ev.new ? '  首次连接，已记录，请核对' : ''}`);
+            if (ev.new) onhostkey?.();
+          } else if (ev.type === 'connected') {
+            line('ssh', host.protocol.toUpperCase().slice(0, 4), `已连接 ${target()}`);
             setStatus({ state: 'connected' });
           } else {
             sessionId = null;
@@ -74,32 +98,49 @@
         },
       });
       password = '';
+      ask = null;
+      onstatus({ ...pane, sessionId, cols: term.cols, rows: term.rows });
       term.focus();
     } catch (e) {
       sessionId = null;
-      const message = errorText(e);
-      line('err', 'ERR', message);
-      if (host.auth.type === 'keyFile' && /passphrase|decrypt|加密|口令/i.test(message)) {
-        showPassphrase = true;
+      const message = api.errorText(e);
+      if (message.startsWith('NEED_PASSWORD')) {
+        ask = 'password';
+        setStatus({ state: 'auth' });
+        return;
       }
+      if (message.includes('私钥需要口令')) {
+        ask = 'passphrase';
+        setStatus({ state: 'auth' });
+        return;
+      }
+      keyChanged = message.includes('主机密钥与已信任的不一致');
+      line('err', 'ERR', message);
       setStatus({ state: 'error', message });
     }
   }
 
-  function submitAuth(e: SubmitEvent) {
+  async function trustNewKey() {
+    await api.hostKeyTrust(host.address, host.port);
+    onhostkey?.();
+    await connect();
+  }
+
+  function submit(e: SubmitEvent) {
     e.preventDefault();
     void connect();
   }
 
   async function applyAppearance() {
     if (!term) return;
-    const pack = findPack(settings.fontPack);
+    const pack = findPack(prefs.fontPack);
+    const family = prefs.fontOverrides.terminal || pack.terminal;
     // 顺序很重要：先等字体真正加载，再改字体、清字形缓存、重新计算行列
-    await ensureFamily(pack.terminal);
-    term.options.fontFamily = familyStack(pack.terminal, 'monospace');
-    term.options.fontSize = settings.terminalFontSize;
+    await ensureFamily(family);
+    term.options.fontFamily = familyStack(family, 'monospace');
+    term.options.fontSize = prefs.terminalFontSize;
     term.options.lineHeight = pack.lineHeight;
-    term.options.theme = TERMINAL_THEMES[settings.theme];
+    term.options.theme = TERMINAL_THEMES[prefs.theme];
     webgl?.clearTextureAtlas();
     refit();
   }
@@ -109,8 +150,8 @@
     const before = `${term.cols}x${term.rows}`;
     fit.fit();
     if (`${term.cols}x${term.rows}` !== before) {
-      onstatus({ ...pane, cols: term.cols, rows: term.rows });
-      if (sessionId) void sshResize(sessionId, term.cols, term.rows).catch(() => {});
+      onstatus({ ...pane, cols: term.cols, rows: term.rows, sessionId });
+      if (sessionId) void api.sessionResize(sessionId, term.cols, term.rows).catch(() => {});
     }
   }
 
@@ -119,20 +160,20 @@
     const el = container;
     if (!el) return;
     let disposed = false;
-    const pack = untrack(() => findPack(settings.fontPack));
+    const pack = untrack(() => findPack(prefs.fontPack));
+    const family = untrack(() => prefs.fontOverrides.terminal || pack.terminal);
 
     (async () => {
-      await ensureFamily(pack.terminal);
+      await ensureFamily(family);
       if (disposed) return;
       term = new Terminal({
-        fontFamily: familyStack(pack.terminal, 'monospace'),
-        fontSize: untrack(() => settings.terminalFontSize),
+        fontFamily: familyStack(family, 'monospace'),
+        fontSize: untrack(() => prefs.terminalFontSize),
         lineHeight: pack.lineHeight,
-        theme: TERMINAL_THEMES[untrack(() => settings.theme)],
+        theme: TERMINAL_THEMES[untrack(() => prefs.theme)],
         cursorBlink: true,
         scrollback: 10000,
         macOptionIsMeta: true,
-        allowTransparency: false,
       });
       fit = new FitAddon();
       term.loadAddon(fit);
@@ -148,11 +189,16 @@
         webgl = undefined; // 不支持 WebGL 时退回 DOM 渲染
       }
       fit.fit();
-      term.onData((data) => {
-        if (sessionId) void sshWrite(sessionId, data).catch(() => {});
+      term.onData((d) => {
+        if (sessionId) void api.sessionWrite(sessionId, d).catch(() => {});
       });
 
-      if (untrack(() => host.auth.type) === 'password') {
+      const h = untrack(() => host);
+      if (!terminalProtocols.includes(h.protocol)) {
+        line('err', 'ERR', '该协议不是终端会话');
+        setStatus({ state: 'error' });
+      } else if (h.protocol !== 'serial' && h.protocol !== 'telnet' && h.auth.type === 'password' && !h.savePassword) {
+        ask = 'password';
         setStatus({ state: 'auth' });
       } else {
         void connect();
@@ -165,7 +211,7 @@
     return () => {
       disposed = true;
       ro.disconnect();
-      if (sessionId) void sshClose(sessionId).catch(() => {});
+      if (sessionId) void api.sessionClose(sessionId).catch(() => {});
       sessionId = null;
       webgl?.dispose();
       term?.dispose();
@@ -174,55 +220,58 @@
 
   // 主题、字体包、字号变化时更新终端
   $effect(() => {
-    void settings.theme;
-    void settings.fontPack;
-    void settings.terminalFontSize;
+    void prefs.theme;
+    void prefs.fontPack;
+    void prefs.terminalFontSize;
+    void prefs.fontOverrides.terminal;
     void applyAppearance();
   });
 
-  // 切到这个标签时聚焦
   $effect(() => {
     if (active) {
       requestAnimationFrame(() => {
         refit();
-        if (untrack(() => pane.state) === 'auth') passwordInput?.focus();
+        if (untrack(() => pane.state) === 'auth') firstInput?.focus();
         else term?.focus();
       });
     }
   });
 </script>
 
-<div class="pane" class:hidden={!active} role="application" aria-label="终端 {host.name}">
+<div class="pane" role="application" aria-label="终端 {host.name}">
   <div class="term" bind:this={container}></div>
 
   {#if pane.state === 'auth' || pane.state === 'error' || pane.state === 'closed'}
     <div class="overlay">
-      <form class="card" onsubmit={submitAuth}>
+      <form class="card" onsubmit={submit}>
         <div class="title">
           <span class="mono">{target()}</span>
           {#if pane.state === 'error'}<span class="hint err">连接失败</span>{/if}
           {#if pane.state === 'closed'}<span class="hint">连接已关闭</span>{/if}
         </div>
-        {#if host.auth.type === 'password'}
+        {#if pane.state === 'error' && pane.message}
+          <p class="msg">{pane.message}</p>
+        {/if}
+        {#if ask === 'password'}
           <label class="field">
             <span>密码</span>
-            <input
-              class="input"
-              type="password"
-              autocomplete="current-password"
-              bind:value={password}
-              bind:this={passwordInput}
-            />
+            <input class="input" type="password" autocomplete="current-password" bind:value={password} bind:this={firstInput} />
           </label>
-        {:else if showPassphrase}
+          <label class="check"><input type="checkbox" bind:checked={savePassword} />保存密码到 Vault（加密）</label>
+        {:else if ask === 'passphrase'}
           <label class="field">
             <span>私钥口令</span>
-            <input class="input" type="password" bind:value={passphrase} />
+            <input class="input" type="password" bind:value={passphrase} bind:this={firstInput} />
           </label>
         {/if}
-        <button class="btn" type="submit" disabled={host.auth.type === 'password' && !password}>
-          {pane.state === 'auth' ? '连接' : '重新连接'}
-        </button>
+        <div class="row">
+          {#if keyChanged}
+            <button class="btn danger" type="button" onclick={trustNewKey}>我确认服务器已更换密钥</button>
+          {/if}
+          <button class="btn" type="submit" disabled={ask === 'password' && !password}>
+            {pane.state === 'auth' ? '连接' : '重新连接'}
+          </button>
+        </div>
       </form>
     </div>
   {/if}
@@ -234,10 +283,6 @@
     inset: 0;
     display: flex;
     background: var(--pane);
-  }
-  .pane.hidden {
-    visibility: hidden;
-    pointer-events: none;
   }
   .term {
     flex: 1;
@@ -259,7 +304,7 @@
     backdrop-filter: blur(2px);
   }
   .card {
-    width: min(360px, calc(100% - 32px));
+    width: min(380px, calc(100% - 32px));
     display: flex;
     flex-direction: column;
     gap: 14px;
@@ -273,7 +318,6 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    font-size: 13px;
   }
   .hint {
     font-size: 12px;
@@ -282,7 +326,26 @@
   .hint.err {
     color: var(--err);
   }
-  .card .btn {
+  .msg {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--mut);
+    line-height: 1.6;
+    user-select: text;
+  }
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--mut);
+  }
+  .row {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .row .btn {
     height: 34px;
   }
 </style>
