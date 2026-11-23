@@ -86,6 +86,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .register_uri_scheme_protocol("vornel-font", commands::fonts::protocol)
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
@@ -143,6 +144,9 @@ pub fn run() {
             commands::sync::sync_check,
             commands::sync::sync_now,
             commands::sync::sync_oauth,
+            commands::fonts::font_addons,
+            commands::fonts::font_addon_install,
+            commands::fonts::font_addon_remove,
         ])
         .run(tauri::generate_context!())
         .expect("Vornel 启动失败");

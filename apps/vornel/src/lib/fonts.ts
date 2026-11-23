@@ -24,7 +24,7 @@ import monaspace400 from '@fontsource/monaspace-neon/files/monaspace-neon-latin-
 import monaspace500 from '@fontsource/monaspace-neon/files/monaspace-neon-latin-500-normal.woff2?url';
 import monaspace600 from '@fontsource/monaspace-neon/files/monaspace-neon-latin-600-normal.woff2?url';
 
-interface Face {
+export interface Face {
   url: string;
   /** 可变字体写范围，例如 '100 900'。 */
   weight: string;
@@ -92,7 +92,18 @@ export const FONT_PACKS: FontPack[] = [
 export const DEFAULT_PACK = 'modern';
 
 /** 系统中文字体回退：macOS / iOS 苹方，Windows 微软雅黑。 */
-const CJK = `'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei UI', 'Microsoft YaHei'`;
+const SYSTEM_CJK = `'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei UI', 'Microsoft YaHei'`;
+let CJK = SYSTEM_CJK;
+
+/** 界面中文字体：null 表示系统字体；否则使用已安装的增强包（思源黑体 / 霞鹜文楷）。 */
+export function setCjkFamily(family: string | null) {
+  CJK = family && FACES[family] ? `'${family}', ${SYSTEM_CJK}` : SYSTEM_CJK;
+}
+
+/** 注册一个已下载的增强包字体（文件经 vornel-font:// 协议读取）。 */
+export function registerAddonFamily(family: string, faces: Face[]) {
+  FACES[family] = faces;
+}
 
 const loading = new Map<string, Promise<void>>();
 
@@ -126,13 +137,17 @@ export function familyStack(family: string, generic: 'sans-serif' | 'monospace')
   return `'${family}', ${CJK}, ${generic === 'monospace' ? 'ui-monospace, ' : 'system-ui, '}${generic}`;
 }
 
-/** 加载字体包需要的字体，并写入 CSS 变量。终端字体由终端组件单独应用。 */
-export async function applyFontPack(id: string): Promise<FontPack> {
+/** 加载字体包需要的字体，并写入 CSS 变量；`overrides` 可单独覆盖界面 / 终端 / 中文字体。 */
+export async function applyFontPack(id: string, overrides: Record<string, string> = {}): Promise<FontPack> {
   const pack = findPack(id);
-  await Promise.all([ensureFamily(pack.ui), ensureFamily(pack.mono), ensureFamily(pack.terminal)]);
+  const ui = overrides.ui || pack.ui;
+  const terminal = overrides.terminal || pack.terminal;
+  const cjk = overrides.cjk || null;
+  await Promise.all([ensureFamily(ui), ensureFamily(pack.mono), ensureFamily(terminal), cjk ? ensureFamily(cjk) : null]);
+  setCjkFamily(cjk);
   const root = document.documentElement.style;
-  root.setProperty('--f-ui', familyStack(pack.ui, 'sans-serif'));
+  root.setProperty('--f-ui', familyStack(ui, 'sans-serif'));
   root.setProperty('--f-mono', familyStack(pack.mono, 'monospace'));
-  root.setProperty('--f-term', familyStack(pack.terminal, 'monospace'));
+  root.setProperty('--f-term', familyStack(terminal, 'monospace'));
   return pack;
 }

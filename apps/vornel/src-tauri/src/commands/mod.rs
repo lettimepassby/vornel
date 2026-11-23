@@ -1,3 +1,4 @@
+pub mod fonts;
 pub mod keys;
 pub mod records;
 pub mod session;
