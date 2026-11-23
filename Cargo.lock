@@ -1766,9 +1766,9 @@ dependencies = [
 
 [[package]]
 name = "filetime"
-version = "0.2.29"
+version = "0.2.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c287a33c7f0a620c38e641e7f60827713987b3c0f26e8ddc9462cc69cf75759"
+checksum = "e1255e7a9f1902190d4c10a75f2f7f495d3d3ce13e9ba26e6c48683a0f4dbed7"
 dependencies = [
  "cfg-if",
  "libc",
@@ -7572,7 +7572,7 @@ dependencies = [
 
 [[package]]
 name = "vornel"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "fontdb",
  "libz-sys",
@@ -7599,7 +7599,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -7608,7 +7608,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-mosh"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "aes 0.9.4",
  "base64 0.23.1",
@@ -7620,7 +7620,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-remote"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "base64 0.23.1",
  "ironrdp-connector",
@@ -7640,7 +7640,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-ssh"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "getrandom 0.4.3",
  "russh",
@@ -7652,7 +7652,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-sync"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "base64 0.23.1",
  "getrandom 0.4.3",
@@ -7673,7 +7673,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-term"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serialport",
  "thiserror 2.0.21",
@@ -7682,7 +7682,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-vault"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "argon2",
  "base64 0.23.1",
