@@ -12,6 +12,7 @@ const DEFAULT_PREFS: Prefs = {
   terminalFontSize: 13,
   fontOverrides: {},
   syncSecrets: false,
+  screenReader: false,
 };
 
 function cachedPrefs(): Prefs {

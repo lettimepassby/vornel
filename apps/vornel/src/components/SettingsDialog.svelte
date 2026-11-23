@@ -28,6 +28,11 @@
   }
 
   const ALL_UI = [...new Set(FONT_PACKS.map((p) => p.ui))];
+  let systemFonts = $state<{ name: string; monospace: boolean }[]>([]);
+  $effect(() => {
+    void api.systemFonts().then((f) => (systemFonts = f)).catch(() => {});
+  });
+  const systemMono = $derived(systemFonts.filter((f) => f.monospace));
   const ALL_MONO = [...new Set(FONT_PACKS.flatMap((p) => [p.mono, p.terminal]))];
 
   function setOverride(role: 'ui' | 'terminal', value: string) {
@@ -229,15 +234,23 @@
           <span>界面字体</span>
           <select class="input sel" value={prefs.fontOverrides.ui ?? ''} onchange={(e) => setOverride('ui', (e.target as HTMLSelectElement).value)}>
             <option value="">跟随字体包</option>
-            {#each ALL_UI as f (f)}<option value={f}>{f}</option>{/each}
+            <optgroup label="内置">{#each ALL_UI as f (f)}<option value={f}>{f}</option>{/each}</optgroup>
+            {#if systemFonts.length}
+              <optgroup label="本机已安装">{#each systemFonts as f (f.name)}<option value={f.name}>{f.name}</option>{/each}</optgroup>
+            {/if}
           </select>
         </div>
         <div class="row">
           <span>终端字体</span>
           <select class="input sel" value={prefs.fontOverrides.terminal ?? ''} onchange={(e) => setOverride('terminal', (e.target as HTMLSelectElement).value)}>
             <option value="">跟随字体包</option>
-            {#each ALL_MONO as f (f)}<option value={f}>{f}</option>{/each}
-            <option value="Maple Mono CN">Maple Mono CN（需下载增强包）</option>
+            <optgroup label="内置">
+              {#each ALL_MONO as f (f)}<option value={f}>{f}</option>{/each}
+              <option value="Maple Mono CN">Maple Mono CN（需下载增强包）</option>
+            </optgroup>
+            {#if systemMono.length}
+              <optgroup label="本机已安装（等宽）">{#each systemMono as f (f.name)}<option value={f.name}>{f.name}</option>{/each}</optgroup>
+            {/if}
           </select>
         </div>
         <div class="row">
@@ -249,6 +262,11 @@
           </div>
         </div>
       </div>
+
+      <label class="check big">
+        <input type="checkbox" bind:checked={prefs.screenReader} />
+        <span><b>屏幕阅读器模式</b><br /><span class="sub">让 VoiceOver / 讲述人可以朗读终端内容。终端字号也可以用 ⌘+ / ⌘− / ⌘0 调整。</span></span>
+      </label>
 
       <FontAddons />
     </section>

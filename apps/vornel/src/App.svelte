@@ -16,6 +16,8 @@
   import TabBar from './components/TabBar.svelte';
   import TerminalPane, { type PaneStatus } from './components/TerminalPane.svelte';
   import ForwardsView from './views/ForwardsView.svelte';
+  import KeyBar from './components/KeyBar.svelte';
+  import MobileHosts from './components/MobileHosts.svelte';
   import KeysView from './views/KeysView.svelte';
   import KnownHostsView from './views/KnownHostsView.svelte';
   import SnippetsView from './views/SnippetsView.svelte';
@@ -31,6 +33,21 @@
   const macInset = /Macintosh|Mac OS X/.test(navigator.userAgent) && !/iPhone|iPad/.test(navigator.userAgent);
   const isTerminal = (h: Host) => ['ssh', 'mosh', 'telnet', 'serial'].includes(h.protocol);
 
+  // iOS 或窄窗口使用移动布局（DESIGN.md 5.4）
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  let narrow = $state(window.innerWidth < 760);
+  const mobile = $derived(isIOS || narrow);
+  /** 移动布局下是否正在看某个会话（否则显示主机列表等页面） */
+  let showSession = $state(false);
+  let ctrlOn = $state(false);
+  const MOBILE_TABS: { id: View | 'settings'; label: string; icon: 'host' | 'key' | 'code' | 'forward' | 'settings' }[] = [
+    { id: 'hosts', label: '主机', icon: 'host' },
+    { id: 'keys', label: '密钥串', icon: 'key' },
+    { id: 'snippets', label: '片段', icon: 'code' },
+    { id: 'forwards', label: '转发', icon: 'forward' },
+    { id: 'settings', label: '设置', icon: 'settings' },
+  ];
+
   let view = $state<View>('hosts');
   let tabs = $state<Tab[]>([]);
   let activeKey = $state<string | null>(null);
@@ -38,7 +55,7 @@
   let settingsTab = $state<'appearance' | 'sync' | null>(null);
   let searchInput = $state<HTMLInputElement>();
   let snippetMenu = $state(false);
-  const panes: Record<string, { send: (text: string) => void } | undefined> = $state({});
+  const panes: Record<string, { send: (text: string) => void; setCtrl: (on: boolean) => void } | undefined> = $state({});
 
   let sync = $state<{ title: string; detail: string; state: 'off' | 'ok' | 'busy' | 'err' }>({
     title: '同步未开启',
@@ -69,7 +86,10 @@
       else if (e.payload === 'settings') settingsTab = 'appearance';
     });
     const timer = setInterval(() => void refreshSync(true), 5 * 60 * 1000);
+    const onResize = () => (narrow = window.innerWidth < 760);
+    window.addEventListener('resize', onResize);
     return () => {
+      window.removeEventListener('resize', onResize);
       void unlisten.then((f) => f());
       clearInterval(timer);
     };
@@ -122,6 +142,7 @@
     tabs.push({ key, host, status: { state: 'connecting' }, sftp: false });
     activeKey = key;
     view = 'hosts';
+    showSession = true;
   }
 
   function closeTab(key: string) {
@@ -130,6 +151,7 @@
     tabs.splice(i, 1);
     delete panes[key];
     if (activeKey === key) activeKey = tabs[Math.min(i, tabs.length - 1)]?.key ?? null;
+    if (!tabs.length) showSession = false;
   }
 
   function sendSnippet(s: Snippet) {
@@ -156,7 +178,16 @@
   function onKeydown(e: KeyboardEvent) {
     const mod = e.metaKey || e.ctrlKey;
     if (!mod) return;
-    if (e.key === 'k') {
+    if (e.key === '=' || e.key === '+') {
+      e.preventDefault();
+      prefs.terminalFontSize = Math.min(24, prefs.terminalFontSize + 1);
+    } else if (e.key === '-') {
+      e.preventDefault();
+      prefs.terminalFontSize = Math.max(10, prefs.terminalFontSize - 1);
+    } else if (e.key === '0') {
+      e.preventDefault();
+      prefs.terminalFontSize = 13;
+    } else if (e.key === 'k') {
       e.preventDefault();
       view = 'hosts';
       searchInput?.focus();
@@ -184,7 +215,8 @@
     <button class="btn danger" type="button" onclick={async () => { await api.vaultReset(); await loadAll(); }}>重置本机数据</button>
   </div>
 {:else}
-  <div class="app">
+  <div class="app" class:mobile>
+    {#if !mobile}
     <Sidebar
       hosts={data.hosts}
       connected={connectedIds}
@@ -200,8 +232,30 @@
       onsettings={() => (settingsTab = 'appearance')}
       onsync={onSyncClick}
     />
+    {/if}
 
     <main>
+      {#if mobile && showSession && activeTab}
+        <div class="mnav">
+          <button class="back" type="button" onclick={() => (showSession = false)}>
+            <span class="flip"><Icon name="chevron" size={18} stroke={2.2} /></span>主机
+          </button>
+          <div class="mid">
+            <b>{activeTab.host.name}</b>
+            <small class:ok={activeTab.status.state === 'connected'}>
+              {activeTab.status.state === 'connected' ? '● 已连接' : activeTab.status.state === 'connecting' ? '正在连接' : '已断开'}
+            </small>
+          </div>
+          {#if activeTab.host.protocol === 'ssh'}
+            <button class="icon-btn big" type="button" aria-label="SFTP" disabled={!activeTab.status.sessionId} onclick={() => activeTab && (activeTab.sftp = !activeTab.sftp)}>
+              <Icon name="folder" size={20} />
+            </button>
+          {:else}
+            <span class="big"></span>
+          {/if}
+        </div>
+      {/if}
+      {#if !mobile}
       <div class="tb-wrap">
         <TabBar
           tabs={tabs.map((t) => ({ key: t.key, title: t.host.name, state: t.status.state }))}
@@ -240,14 +294,17 @@
           </div>
         {/if}
       </div>
+      {/if}
 
       <div class="stage" class:focus={view === 'hosts' && !!activeTab}>
         {#each tabs as t (t.key)}
-          <div class="ws" class:hidden={view !== 'hosts' || t.key !== activeKey}>
+          <div class="ws" class:hidden={view !== 'hosts' || t.key !== activeKey || (mobile && !showSession)}>
             <div class="term-area">
               {#if isTerminal(t.host)}
                 <TerminalPane
                   bind:this={panes[t.key]}
+                  autoReconnect={isIOS}
+                  onctrlused={() => (ctrlOn = false)}
                   host={t.host}
                   active={view === 'hosts' && t.key === activeKey}
                   onstatus={(s) => (t.status = s)}
@@ -271,9 +328,22 @@
           <ForwardsView />
         {:else if view === 'known'}
           <KnownHostsView />
+        {:else if mobile && !showSession}
+          <MobileHosts
+            hosts={data.hosts}
+            sessions={tabs.map((t) => ({ key: t.key, title: t.host.name, state: t.status.state }))}
+            onconnect={openTab}
+            onresume={(k) => {
+              activeKey = k;
+              showSession = true;
+            }}
+            onedit={(h) => (editing = { host: h, isNew: false })}
+            onnew={() => (editing = { host: api.blankHost(), isNew: true })}
+            onknown={() => (view = 'known')}
+          />
         {:else if tabs.length === 0}
           <div class="empty">
-            <Logo size={56} />
+            <Logo size={56} blink />
             {#if data.hosts.length === 0}
               <h1>欢迎使用 Vornel</h1>
               <p>添加第一台主机，开始连接。</p>
@@ -294,7 +364,33 @@
         {/if}
       </div>
 
-      <StatusBar host={view === 'hosts' ? (activeTab?.host ?? null) : null} status={view === 'hosts' ? (activeTab?.status ?? null) : null} />
+      {#if mobile}
+        {#if showSession && activeTab && view === 'hosts' && isTerminal(activeTab.host)}
+          <KeyBar
+            ctrl={ctrlOn}
+            onctrl={(on) => {
+              ctrlOn = on;
+              if (activeKey) panes[activeKey]?.setCtrl(on);
+            }}
+            onkey={(seq) => activeKey && panes[activeKey]?.send(seq)}
+          />
+        {:else if !showSession}
+          <nav class="mtabs" aria-label="主导航">
+            {#each MOBILE_TABS as mt (mt.id)}
+              <button
+                type="button"
+                class:on={mt.id === view}
+                aria-current={mt.id === view ? 'page' : undefined}
+                onclick={() => (mt.id === 'settings' ? (settingsTab = 'appearance') : (view = mt.id))}
+              >
+                <Icon name={mt.icon} size={23} />{mt.label}
+              </button>
+            {/each}
+          </nav>
+        {/if}
+      {:else}
+        <StatusBar host={view === 'hosts' ? (activeTab?.host ?? null) : null} status={view === 'hosts' ? (activeTab?.status ?? null) : null} />
+      {/if}
     </main>
   </div>
 {/if}
@@ -441,6 +537,98 @@
     border-radius: 4px;
     border: 1px solid var(--line2);
     margin-right: 4px;
+  }
+  /* ---------------- 移动布局 ---------------- */
+  .app.mobile main {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .app.mobile .stage {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .app.mobile .sftp-area {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    z-index: 5;
+    border: 0;
+  }
+  .mnav {
+    height: 48px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    border-bottom: 1px solid var(--line);
+  }
+  .back {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-height: 44px;
+    min-width: 72px;
+    padding: 0 6px;
+    border: 0;
+    background: none;
+    color: var(--acc);
+    font-size: 16px;
+  }
+  .flip :global(svg) {
+    transform: rotate(180deg);
+  }
+  .mid {
+    flex: 1;
+    text-align: center;
+    min-width: 0;
+  }
+  .mid b {
+    display: block;
+    font: 600 14.5px var(--f-mono);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mid small {
+    font-size: 11.5px;
+    color: var(--mut);
+  }
+  .mid small.ok {
+    color: var(--ok);
+  }
+  .big {
+    width: 72px;
+    display: flex;
+    justify-content: flex-end;
+  }
+  .icon-btn.big {
+    width: 44px;
+    height: 44px;
+    margin-left: 28px;
+    color: var(--acc);
+  }
+  .mtabs {
+    display: flex;
+    justify-content: space-around;
+    padding: 6px 0 calc(6px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--line);
+    background: var(--sb);
+  }
+  .mtabs button {
+    min-width: 64px;
+    min-height: 46px;
+    border: 0;
+    background: none;
+    color: var(--mut);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-size: 10.5px;
+    font-weight: 500;
+  }
+  .mtabs button.on {
+    color: var(--acc);
   }
   .fatal {
     height: 100%;

@@ -33,3 +33,7 @@ vornel-ssh.workspace = true
 vornel-sync.workspace = true
 vornel-term.workspace = true
 vornel-vault.workspace = true
+
+# 列出本机已安装的字体（字体包“单独调整”里可选）
+[target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
+fontdb = "0.24"

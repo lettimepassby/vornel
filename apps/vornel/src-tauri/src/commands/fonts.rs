@@ -192,6 +192,44 @@ pub async fn font_addon_remove(app: AppHandle, id: String) -> CmdResult<()> {
     }
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemFont {
+    pub name: String,
+    pub monospace: bool,
+}
+
+/// 本机已安装的字体家族（桌面端）。
+#[tauri::command]
+pub async fn system_fonts() -> CmdResult<Vec<SystemFont>> {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    {
+        tokio::task::spawn_blocking(|| {
+            let mut db = fontdb::Database::new();
+            db.load_system_fonts();
+            let mut map = std::collections::BTreeMap::<String, bool>::new();
+            for face in db.faces() {
+                for (name, _) in &face.families {
+                    if name.starts_with('.') {
+                        continue; // macOS 的系统私有字体
+                    }
+                    let mono = map.entry(name.clone()).or_insert(false);
+                    *mono |= face.monospaced;
+                }
+            }
+            map.into_iter()
+                .map(|(name, monospace)| SystemFont { name, monospace })
+                .collect()
+        })
+        .await
+        .map_err(err)
+    }
+    #[cfg(any(target_os = "ios", target_os = "android"))]
+    {
+        Ok(Vec::new())
+    }
+}
+
 /// `vornel-font://localhost/<id>/<file>`：只允许读取已登记增强包中的文件。
 pub fn protocol<R: Runtime>(
     ctx: UriSchemeContext<'_, R>,

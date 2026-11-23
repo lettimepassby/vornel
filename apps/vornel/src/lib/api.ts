@@ -83,6 +83,7 @@ export interface Prefs {
   terminalFontSize: number;
   fontOverrides: Record<string, string>;
   syncSecrets: boolean;
+  screenReader: boolean;
 }
 
 export const PROTOCOL_PORTS: Record<Protocol, number> = {
@@ -163,6 +164,7 @@ export const sessionWrite = (sessionId: string, data: string) =>
 export const sessionResize = (sessionId: string, cols: number, rows: number) =>
   invoke<void>('session_resize', { sessionId, cols, rows });
 export const sessionClose = (sessionId: string) => invoke<void>('session_close', { sessionId });
+export const systemFonts = () => invoke<{ name: string; monospace: boolean }[]>('system_fonts');
 export const serialPorts = () => invoke<string[]>('serial_ports');
 export const hostKeyTrust = (host: string, port: number) => invoke<void>('host_key_trust', { host, port });
 

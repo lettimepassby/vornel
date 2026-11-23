@@ -25,13 +25,27 @@
     active,
     onstatus,
     onhostkey,
+    autoReconnect = false,
+    onctrlused,
   }: {
     host: Host;
     active: boolean;
     onstatus: (s: PaneStatus) => void;
     /** 记录了新的主机指纹（界面需要刷新已知主机列表） */
     onhostkey?: () => void;
+    /** 回到前台时自动重连（iOS 切到后台约 30 秒后会断网） */
+    autoReconnect?: boolean;
+    /** 粘滞 Ctrl 被使用后通知界面复位按钮 */
+    onctrlused?: () => void;
   } = $props();
+
+  let ctrlLatch = false;
+
+  /** 移动端按键栏的粘滞 Ctrl：下一个输入的字母会变成控制字符。 */
+  export function setCtrl(on: boolean) {
+    ctrlLatch = on;
+    term?.focus();
+  }
 
   let container = $state<HTMLDivElement>();
   let term: Terminal | undefined;
@@ -142,6 +156,7 @@
     term.options.fontSize = prefs.terminalFontSize;
     term.options.lineHeight = pack.lineHeight;
     term.options.theme = TERMINAL_THEMES[prefs.theme];
+    term.options.screenReaderMode = prefs.screenReader;
     webgl?.clearTextureAtlas();
     refit();
   }
@@ -175,6 +190,7 @@
         cursorBlink: true,
         scrollback: 10000,
         macOptionIsMeta: true,
+        screenReaderMode: untrack(() => prefs.screenReader),
       });
       fit = new FitAddon();
       term.loadAddon(fit);
@@ -191,7 +207,14 @@
       }
       fit.fit();
       term.onData((d) => {
-        if (sessionId) void api.sessionWrite(sessionId, d).catch(() => {});
+        let out = d;
+        if (ctrlLatch && d.length === 1) {
+          const c = d.toUpperCase().charCodeAt(0);
+          if (c >= 64 && c <= 95) out = String.fromCharCode(c - 64);
+          ctrlLatch = false;
+          onctrlused?.();
+        }
+        if (sessionId) void api.sessionWrite(sessionId, out).catch(() => {});
       });
 
       const h = untrack(() => host);
@@ -225,7 +248,22 @@
     void prefs.fontPack;
     void prefs.terminalFontSize;
     void prefs.fontOverrides.terminal;
+    void prefs.screenReader;
     void applyAppearance();
+  });
+
+  // 回到前台时，断开的会话自动重连（已保存凭据的情况下）
+  $effect(() => {
+    if (!autoReconnect) return;
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      const st = untrack(() => pane.state);
+      const h = untrack(() => host);
+      const needsPrompt = h.auth.type === 'password' && !h.savePassword && h.protocol !== 'telnet' && h.protocol !== 'serial';
+      if ((st === 'closed' || st === 'error') && !needsPrompt && !keyChanged) void connect();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   });
 
   $effect(() => {

@@ -6,6 +6,9 @@
   let addons = $state<Addon[]>([]);
   let progress = $state<Record<string, number>>({});
   let error = $state('');
+  // iOS 上下载前先确认（ARCHITECTURE.md 8.3：可能使用蜂窝流量）
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  let confirmId = $state<string | null>(null);
 
   async function refresh() {
     addons = await listAddons();
@@ -16,6 +19,11 @@
   });
 
   async function install(a: Addon) {
+    if (isIOS && confirmId !== a.id) {
+      confirmId = a.id;
+      return;
+    }
+    confirmId = null;
     error = '';
     progress[a.id] = 0;
     try {
@@ -65,7 +73,9 @@
             {/if}
             <button class="btn danger" type="button" onclick={() => uninstall(a)}>删除</button>
           {:else}
-            <button class="btn" type="button" onclick={() => install(a)}>下载</button>
+            <button class="btn" type="button" onclick={() => install(a)}>
+              {confirmId === a.id ? `确认下载 ${formatSize(a.size)}（可能使用蜂窝流量）` : '下载'}
+            </button>
           {/if}
         </div>
       </div>

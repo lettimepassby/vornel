@@ -345,6 +345,9 @@ pub struct Prefs {
     /// 是否同步保存的密码
     #[serde(default)]
     pub sync_secrets: bool,
+    /// 终端屏幕阅读器模式（xterm.js screenReaderMode）
+    #[serde(default)]
+    pub screen_reader: bool,
 }
 
 fn default_theme() -> String {
@@ -366,6 +369,7 @@ impl Default for Prefs {
             terminal_font_size: default_font_size(),
             font_overrides: Default::default(),
             sync_secrets: false,
+            screen_reader: false,
         }
     }
 }
