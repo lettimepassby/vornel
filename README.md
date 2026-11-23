@@ -46,7 +46,7 @@
 
 - 每次推送到 `main` 会运行 **CI**（前端类型检查、Rust 格式 / Clippy / 测试）。
 - 在 Actions 页面手动运行 **Build** 工作流，可以得到 macOS 与 Windows 的安装包。
-- 推送 `v*` 标签会自动打包、正式发布 Release，并上传应用内更新清单（见下方“发布新版本”）。
+- `main` 上的版本号还没发布过时，推送到 `main` 会自动打包并正式发布（见下方“发布新版本”）。
 - **iOS** 工作流在每次推送到 `main` 时构建模拟器版本，验证能否编译。
 
 ### 发布新版本
@@ -54,10 +54,11 @@
 macOS 与 Windows 版内置自动更新：启动时检查 GitHub 上最新 Release 的 `latest.json`，发现新版本会在窗口顶部提示，也可以在“设置 → 关于与开源许可”里手动检查。iOS 版通过 App Store 更新。
 
 1. **改版本号**：`node scripts/bump-version.mjs 0.2.0`。脚本会同时修改 `Cargo.toml`、`apps/vornel/src-tauri/tauri.conf.json`、`apps/vornel/package.json`，并刷新 `Cargo.lock` 与 `package-lock.json`。
-2. **提交**：`git commit -am "版本 0.2.0"`，推送到 `main`。
-3. **打标签并推送**：`git tag v0.2.0 && git push origin v0.2.0`。
-4. **Actions 自动完成**：Build 工作流打包 macOS 与 Windows 安装包，用 Secret 中的私钥给更新包签名，正式发布 Release，并生成更新清单 `latest.json`。
-5. **已安装的应用自动提示更新**：用户点“更新并重启”即可完成下载、校验签名、安装与重启。
+2. **提交并推送到 `main`**：`git commit -am "版本 0.2.0"`，推送（或从 develop 合并到 main 后推送）。不需要手动打标签。
+3. **Actions 自动完成**：Build 工作流发现这个版本还没有 Release，于是先建草稿，再**并行**打包 macOS（Apple 芯片）、macOS（Intel）、Windows，三者都完成后统一生成更新清单 `latest.json` 并正式发布 `v0.2.0` 标签与 Release。打包在 `main` 上运行，会复用上一次发布的编译缓存。
+4. **已安装的应用自动提示更新**：用户点“更新并重启”即可完成下载、校验签名、安装与重启。
+
+版本号没变的普通合并不会触发打包。
 
 更新包签名需要仓库 Secret `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`，对应的公钥写在 `tauri.conf.json` 的 `plugins.updater.pubkey`。私钥一旦丢失，已安装的版本将无法再验证新的更新包，只能让用户手动下载安装，请妥善备份。
 

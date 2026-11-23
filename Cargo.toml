@@ -28,8 +28,8 @@ uuid = { version = "1.29", features = ["v4", "serde"] }
 russh = { version = "0.65", default-features = false, features = ["flate2", "ring", "rsa"] }
 
 [profile.release]
-codegen-units = 1
-lto = true
+# thin LTO：编译速度明显快于完整 LTO，安装包只略大，适合高频发布
+lto = "thin"
 opt-level = "s"
 panic = "abort"
 strip = true

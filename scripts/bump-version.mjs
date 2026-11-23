@@ -50,5 +50,5 @@ run('npm', ['install', '--package-lock-only', '--ignore-scripts'], app);
 
 console.log(`\n版本号已改为 ${version}。接下来：
   git commit -am "版本 ${version}"
-  git tag v${version}
-  git push && git push origin v${version}`);
+  推送到 main（或从 develop 合并到 main 后推送）
+推送后 GitHub Actions 会自动并行打包 macOS（Apple 芯片 / Intel）与 Windows，生成更新清单并正式发布 v${version}。`);
