@@ -59,7 +59,9 @@ jobs:
           sudo mkdir -p /run/sshd
           sudo /usr/sbin/sshd -f $T/sshd/config -E $T/sshd/log
 
-          # xrdp（端口 3389）
+          # xrdp（端口 3389）：让 xrdp 能读取证书并强制 TLS（Vornel 只接受 TLS / NLA，不接受不加密的标准 RDP 安全层）
+          sudo usermod -aG ssl-cert xrdp
+          sudo sed -i 's/^security_layer=.*/security_layer=tls/' /etc/xrdp/xrdp.ini
           sudo systemctl restart xrdp-sesman xrdp
           # VNC（x11vnc 共享一个 Xvfb 桌面，端口 5900）
           Xvfb :99 -screen 0 1024x768x24 >/dev/null 2>&1 &
@@ -72,7 +74,7 @@ jobs:
           # 虚拟串口对
           socat pty,raw,echo=0,link=/tmp/vornel-s0 pty,raw,echo=0,link=/tmp/vornel-s1 >/dev/null 2>&1 &
           # S3（MinIO）
-          docker run -d --name minio -p 9000:9000 -e MINIO_ROOT_USER=vornel -e MINIO_ROOT_PASSWORD=vornel-secret-1 minio/minio server /data
+          docker run -d --name minio -p 9000:9000 -e MINIO_ROOT_USER=vornel -e MINIO_ROOT_PASSWORD=vornel-secret-1 quay.io/minio/minio server /data
           for i in $(seq 60); do curl -sf http://127.0.0.1:9000/minio/health/live && break; sleep 1; done
           AWS_ACCESS_KEY_ID=vornel AWS_SECRET_ACCESS_KEY=vornel-secret-1 aws --endpoint-url http://127.0.0.1:9000 --region us-east-1 s3 mb s3://vornel-test
           # WebDAV（rclone）
@@ -82,6 +84,7 @@ jobs:
           ss -ltnp | grep -E ':(2222|3389|5900|2323|9000|8081) ' || true
 
       - name: 集成测试：RDP（xrdp）/ VNC（x11vnc）
+        if: always()
         env:
           VORNEL_TEST_RDP_PORT: 3389
           VORNEL_TEST_RDP_USER: vornel
@@ -90,7 +93,7 @@ jobs:
           VORNEL_TEST_VNC_PASS: vnc-pw-1
         run: cargo test -p vornel-remote --test servers -- --ignored --nocapture --test-threads=1
 
-      - name: 集成测试：Telnet（busybox telnetd）/ 串口（socat 虚拟串口）
+      - name: 集成测试：Telnet（inetutils telnetd）/ 串口（socat 虚拟串口）
         if: always()
         env:
           VORNEL_TEST_TELNET_PORT: 2323
