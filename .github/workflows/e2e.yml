@@ -26,7 +26,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
             webkit2gtk-driver xvfb openssh-server xrdp xorgxrdp x11vnc socat rclone \
-            inetutils-telnetd openbsd-inetd fonts-noto-cjk
+            inetutils-telnetd openbsd-inetd fonts-noto-cjk \
+            mosh x11-xserver-utils
 
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
@@ -145,6 +146,27 @@ jobs:
           cd e2e
           npm ci
           VORNEL_APP=$GITHUB_WORKSPACE/target/debug/vornel npm test
+
+      - name: 界面端到端测试：Telnet / VNC / Mosh / 文件夹同步
+        if: always()
+        env:
+          SSH_PORT: 2222
+          SSH_USER: vornel
+          SSH_PASS: Vornel-Pass-1
+          TELNET_PORT: 2323
+          TELNET_USER: vornel
+          TELNET_PASS: Vornel-Pass-1
+          VNC_PORT: 5900
+          VNC_PASS: vnc-pw-1
+        run: |
+          # VNC 共享的 Xvfb :99 默认全黑，先铺上底色，测试据此判断画面与颜色通道
+          DISPLAY=:99 xsetroot -solid '#3366cc'
+          export DISPLAY=:98
+          pgrep -f 'Xvfb :98' >/dev/null || { Xvfb :98 -screen 0 1440x900x24 >/dev/null 2>&1 & sleep 1; }
+          pgrep -x tauri-driver >/dev/null || { tauri-driver >>$RUNNER_TEMP/tauri-driver.log 2>&1 & sleep 3; }
+          cd e2e
+          [ -d node_modules ] || npm ci
+          VORNEL_APP=$GITHUB_WORKSPACE/target/debug/vornel node protocols.mjs
 
       - name: 上传截图
         if: always()
