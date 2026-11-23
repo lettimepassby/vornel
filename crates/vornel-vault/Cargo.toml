@@ -1,0 +1,26 @@
+[package]
+name = "vornel-vault"
+description = "Vornel 的加密本地存储：SQLite + XChaCha20-Poly1305，按字段 LWW 合并"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license-file.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+vornel-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+argon2 = "0.6"
+base64 = "0.23"
+chacha20poly1305 = { version = "0.11", default-features = false, features = ["alloc"] }
+getrandom = "0.4"
+rusqlite = { version = "0.43", features = ["bundled"] }
+zeroize = { version = "1.9", features = ["derive"] }
+
+# 系统钥匙串：macOS Keychain / Windows 凭据管理器 / Linux Secret Service；iOS 上退回到沙盒文件
+[target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
+keyring = "4.2"

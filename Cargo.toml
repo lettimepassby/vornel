@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/vornel-core", "crates/vornel-ssh", "apps/vornel/src-tauri"]
+members = ["crates/*", "apps/vornel/src-tauri"]
 
 [workspace.package]
 version = "0.1.0"
@@ -13,6 +13,8 @@ rust-version = "1.85"
 [workspace.dependencies]
 vornel-core = { path = "crates/vornel-core" }
 vornel-ssh = { path = "crates/vornel-ssh" }
+vornel-vault = { path = "crates/vornel-vault" }
+vornel-sync = { path = "crates/vornel-sync" }
 
 tokio = { version = "1.54", features = ["rt-multi-thread", "macros", "sync", "time"] }
 serde = { version = "1", features = ["derive"] }

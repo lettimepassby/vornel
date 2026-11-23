@@ -1,0 +1,40 @@
+[package]
+name = "vornel-sync"
+description = "Vornel 的端到端加密云同步：本地文件夹 / S3 / WebDAV / Google Drive / OneDrive / Dropbox"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license-file.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+vornel-vault.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["net", "io-util"] }
+uuid.workspace = true
+base64 = "0.23"
+getrandom = "0.4"
+sha2 = "0.11"
+url = "2"
+# 统一用 ring 作为 TLS 加密后端（与 russh 一致），避免 aws-lc-rs 在 Windows / iOS 上额外依赖 cmake、nasm
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "http2", "json", "form"] }
+opendal = { version = "0.59", default-features = false, features = [
+    "executors-tokio",
+    "http-transport-reqwest-rustls-no-provider",
+    "layers-retry",
+    "layers-timeout",
+    "services-dropbox",
+    "services-fs",
+    "services-gdrive",
+    "services-onedrive",
+    "services-s3",
+    "services-webdav",
+] }
+
+[dev-dependencies]
+vornel-core.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }

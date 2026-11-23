@@ -1,6 +1,6 @@
 [package]
 name = "vornel-core"
-description = "Vornel 的数据模型与本地存储"
+description = "Vornel 的数据模型"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -10,6 +10,7 @@ rust-version.workspace = true
 
 [dependencies]
 serde.workspace = true
-serde_json.workspace = true
-thiserror.workspace = true
 uuid.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
