@@ -125,7 +125,7 @@ try {
   await check('终端执行命令并读回输出', async () => {
     // 点击终端获得焦点，再像真实键盘一样输入（xterm 的输入框是隐藏元素）
     await click(By.css('div[role="application"] .xterm-screen'));
-    await driver.actions().sendKeys('echo e2e-$((6*7))', Key.ENTER).perform();
+    await driver.actions().sendKeys('printf e2e-; seq 42 42', Key.ENTER).perform();
     await waitTerminal('e2e-42');
     await shot('ssh-command');
   });
