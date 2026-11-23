@@ -1,0 +1,65 @@
+name: iOS
+
+# - 每次推送到 main / 手动触发：生成 Xcode 工程并构建模拟器版本（不签名），验证 iOS 能编译通过
+# - 配置了签名证书（见 README “iOS 签名”）时：额外构建可上传 App Store / TestFlight 的 IPA
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    env:
+      HAS_IOS_CERT: ${{ secrets.IOS_CERTIFICATE != '' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ios
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/vornel/package-lock.json
+
+      - name: 安装前端依赖、生成图标
+        working-directory: apps/vornel
+        run: |
+          npm ci
+          npx tauri icon app-icon.svg
+
+      - name: 生成 Xcode 工程
+        working-directory: apps/vornel
+        run: |
+          brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+          npx tauri ios init --ci
+
+      - name: 构建模拟器版本（不签名，验证编译）
+        working-directory: apps/vornel
+        run: npx tauri ios build --target aarch64-sim --debug --no-sign --ci
+
+      - name: 构建 IPA（签名）
+        if: env.HAS_IOS_CERT == 'true'
+        working-directory: apps/vornel
+        env:
+          IOS_CERTIFICATE: ${{ secrets.IOS_CERTIFICATE }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_MOBILE_PROVISION: ${{ secrets.IOS_MOBILE_PROVISION }}
+          APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_DEVELOPMENT_TEAM }}
+        run: npx tauri ios build --export-method app-store-connect --ci
+
+      - uses: actions/upload-artifact@v4
+        if: env.HAS_IOS_CERT == 'true'
+        with:
+          name: vornel-ios
+          path: apps/vornel/src-tauri/gen/apple/build/**/*.ipa
+          retention-days: 14
+          if-no-files-found: error

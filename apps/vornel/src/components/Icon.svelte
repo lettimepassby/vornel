@@ -18,6 +18,13 @@
     folder: 'M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v7a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5z',
     refresh: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',
     chevron: 'M9 6l6 6-6 6',
+    file: 'M6 3h8l4 4v14H6zM14 3v4h4',
+    play: 'M7 5l12 7-12 7z',
+    stop: 'M6 6h12v12H6z',
+    copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
+    upload: 'M12 16V4M6 10l6-6 6 6M4 20h16',
+    monitor: 'M3 5h18v12H3zM8 21h8M12 17v4',
+    send: 'M4 12l16-8-6 16-3-7z',
   } as const;
 
   export type IconName = keyof typeof PATHS;

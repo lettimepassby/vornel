@@ -1,10 +1,19 @@
 <script lang="ts">
+  import { open as openDialog } from '@tauri-apps/plugin-dialog';
+  import { untrack } from 'svelte';
+  import * as api from '../lib/api';
+  import type { BackendConfig } from '../lib/api';
   import { ensureFamily, familyStack, FONT_PACKS } from '../lib/fonts';
-  import { settings } from '../lib/settings.svelte';
+  import { FONT_LICENSES, LIBRARIES } from '../lib/licenses';
+  import { loadAll, prefs } from '../lib/store.svelte';
   import Dialog from './Dialog.svelte';
+  import FontAddons from './FontAddons.svelte';
   import Icon from './Icon.svelte';
 
-  let { onclose }: { onclose: () => void } = $props();
+  let { onclose, initialTab = 'appearance' }: { onclose: () => void; initialTab?: Tab } = $props();
+
+  type Tab = 'appearance' | 'sync' | 'security' | 'about';
+  let tab = $state<Tab>(untrack(() => initialTab));
 
   // 打开设置时预加载所有字体包，让预览卡片显示真实字体
   $effect(() => {
@@ -15,64 +24,391 @@
   });
 
   function setSize(delta: number) {
-    settings.terminalFontSize = Math.min(24, Math.max(10, settings.terminalFontSize + delta));
+    prefs.terminalFontSize = Math.min(24, Math.max(10, prefs.terminalFontSize + delta));
   }
+
+  const ALL_UI = [...new Set(FONT_PACKS.map((p) => p.ui))];
+  let systemFonts = $state<{ name: string; monospace: boolean }[]>([]);
+  $effect(() => {
+    void api.systemFonts().then((f) => (systemFonts = f)).catch(() => {});
+  });
+  const systemMono = $derived(systemFonts.filter((f) => f.monospace));
+  const ALL_MONO = [...new Set(FONT_PACKS.flatMap((p) => [p.mono, p.terminal]))];
+
+  function setOverride(role: 'ui' | 'terminal', value: string) {
+    const next = { ...prefs.fontOverrides };
+    if (value) next[role] = value;
+    else delete next[role];
+    prefs.fontOverrides = next;
+  }
+
+  // ---------------------------------------------------------------- 同步
+  type BackendType = BackendConfig['type'];
+  const BACKENDS: { type: BackendType; label: string }[] = [
+    { type: 'folder', label: '本地文件夹' },
+    { type: 's3', label: 'S3 兼容' },
+    { type: 'webdav', label: 'WebDAV' },
+    { type: 'gdrive', label: 'Google Drive' },
+    { type: 'oneDrive', label: 'OneDrive' },
+    { type: 'dropbox', label: 'Dropbox' },
+  ];
+
+  let cfg = $state<BackendConfig | null>(null);
+  let backendType = $state<BackendType>('folder');
+  let form = $state({
+    path: '',
+    endpoint: '',
+    bucket: '',
+    region: '',
+    accessKeyId: '',
+    secretAccessKey: '',
+    username: '',
+    password: '',
+    root: '',
+    clientId: '',
+    clientSecret: '',
+  });
+  let syncMsg = $state('');
+  let syncErr = $state('');
+  let syncBusy = $state(false);
+  let masterPw = $state('');
+  let masterPw2 = $state('');
+  let needPw = $state<'new' | 'existing' | null>(null);
+
+  $effect(() => {
+    void api.syncGetConfig().then((c) => {
+      cfg = c;
+      if (c) {
+        backendType = c.type;
+        Object.assign(form, c);
+      }
+    });
+  });
+
+  const isOAuth = $derived(backendType === 'gdrive' || backendType === 'oneDrive' || backendType === 'dropbox');
+
+  function buildConfig(): BackendConfig {
+    switch (backendType) {
+      case 'folder':
+        return { type: 'folder', path: form.path };
+      case 's3':
+        return {
+          type: 's3',
+          endpoint: form.endpoint,
+          bucket: form.bucket,
+          region: form.region,
+          accessKeyId: form.accessKeyId,
+          secretAccessKey: form.secretAccessKey,
+          root: form.root,
+        };
+      case 'webdav':
+        return { type: 'webdav', endpoint: form.endpoint, username: form.username, password: form.password, root: form.root };
+      default:
+        throw new Error('请点击“授权”完成登录');
+    }
+  }
+
+  async function pickFolder() {
+    const dir = await openDialog({ directory: true, title: '选择同步文件夹' });
+    if (typeof dir === 'string') form.path = dir;
+  }
+
+  async function saveBackend() {
+    syncErr = '';
+    syncMsg = '';
+    try {
+      const c = buildConfig();
+      await api.syncSetConfig(c);
+      cfg = c;
+      syncMsg = '已保存。点击“立即同步”开始。';
+    } catch (e) {
+      syncErr = api.errorText(e);
+    }
+  }
+
+  async function authorize() {
+    syncErr = '';
+    syncMsg = '已在浏览器中打开授权页面，请完成登录…';
+    syncBusy = true;
+    try {
+      const provider = backendType === 'gdrive' ? 'google' : backendType === 'oneDrive' ? 'microsoft' : 'dropbox';
+      cfg = await api.syncOAuth(provider, form.clientId, form.clientSecret);
+      syncMsg = '授权成功。点击“立即同步”开始。';
+    } catch (e) {
+      syncMsg = '';
+      syncErr = api.errorText(e);
+    } finally {
+      syncBusy = false;
+    }
+  }
+
+  async function disconnect() {
+    await api.syncSetConfig(null);
+    cfg = null;
+    syncMsg = '已断开同步，本机数据保留。';
+  }
+
+  async function syncNow() {
+    syncErr = '';
+    syncMsg = '';
+    if (needPw === 'new' && masterPw !== masterPw2) {
+      syncErr = '两次输入的主密码不一致';
+      return;
+    }
+    if (needPw === 'new' && masterPw.length < 8) {
+      syncErr = '主密码至少 8 个字符';
+      return;
+    }
+    syncBusy = true;
+    try {
+      const r = await api.syncNow(needPw ? masterPw : undefined);
+      needPw = null;
+      masterPw = masterPw2 = '';
+      syncMsg = `${r.created ? '已创建云端同步库。' : ''}${r.joined ? '已加入已有的同步库。' : ''}拉取 ${r.pulled} 条，推送 ${r.pushed} 条。`;
+      await loadAll();
+    } catch (e) {
+      const m = api.errorText(e);
+      if (m.startsWith('NEED_PASSWORD:')) {
+        needPw = m.endsWith('new') ? 'new' : 'existing';
+      } else {
+        syncErr = m;
+      }
+    } finally {
+      syncBusy = false;
+    }
+  }
+
+  // ---------------------------------------------------------------- 安全
+  let confirmReset = $state(false);
+  async function resetVault() {
+    if (!confirmReset) {
+      confirmReset = true;
+      return;
+    }
+    await api.vaultReset();
+    confirmReset = false;
+    await loadAll();
+  }
+
+  let openLicense = $state<string | null>(null);
 </script>
 
-<Dialog title="外观" width={640} {onclose}>
-  <section>
-    <div class="row">
-      <div><b>主题</b></div>
-      <div class="seg" role="group" aria-label="主题">
-        <button type="button" aria-pressed={settings.theme === 'ink'} onclick={() => (settings.theme = 'ink')}>深色 Ink</button>
-        <button type="button" aria-pressed={settings.theme === 'paper'} onclick={() => (settings.theme = 'paper')}>浅色 Paper</button>
-      </div>
-    </div>
+<Dialog title="设置" width={700} {onclose}>
+  <div class="tabs seg" role="tablist" aria-label="设置分类">
+    <button type="button" role="tab" aria-selected={tab === 'appearance'} onclick={() => (tab = 'appearance')}>外观</button>
+    <button type="button" role="tab" aria-selected={tab === 'sync'} onclick={() => (tab = 'sync')}>同步</button>
+    <button type="button" role="tab" aria-selected={tab === 'security'} onclick={() => (tab = 'security')}>安全</button>
+    <button type="button" role="tab" aria-selected={tab === 'about'} onclick={() => (tab = 'about')}>关于与开源许可</button>
+  </div>
 
-    <div class="block">
-      <b>字体包</b>
-      <span class="sub">英文字体已内置、离线可用；界面中文使用系统字体。中文增强包将在后续版本提供下载。</span>
-      <div class="packs">
-        {#each FONT_PACKS as p (p.id)}
-          <button
-            type="button"
-            class="pk"
-            class:on={settings.fontPack === p.id}
-            aria-pressed={settings.fontPack === p.id}
-            onclick={() => (settings.fontPack = p.id)}
-          >
-            <span class="pv">
-              <span class="a" style:font-family={familyStack(p.ui, 'sans-serif')}>Aa 主机</span>
-              <span class="t" style:font-family={familyStack(p.terminal, 'monospace')}>❯ ssh web-01</span>
-            </span>
-            <span class="nm">{p.name}<span class="chk"><Icon name="chevron" size={12} /></span></span>
-            <span class="fs">{p.ui} · {p.terminal}</span>
-          </button>
-        {/each}
+  {#if tab === 'appearance'}
+    <section>
+      <div class="row">
+        <b>主题</b>
+        <div class="seg" role="group" aria-label="主题">
+          <button type="button" aria-pressed={prefs.theme === 'ink'} onclick={() => (prefs.theme = 'ink')}>深色 Ink</button>
+          <button type="button" aria-pressed={prefs.theme === 'paper'} onclick={() => (prefs.theme = 'paper')}>浅色 Paper</button>
+        </div>
       </div>
-    </div>
 
-    <div class="row">
-      <div><b>终端字号</b></div>
-      <div class="stepper">
-        <button class="icon-btn" type="button" aria-label="减小字号" onclick={() => setSize(-1)}>−</button>
-        <span class="mono">{settings.terminalFontSize}</span>
-        <button class="icon-btn" type="button" aria-label="增大字号" onclick={() => setSize(1)}>+</button>
+      <div class="block">
+        <b>字体包</b>
+        <span class="sub">英文字体已内置、离线可用；界面中文默认使用系统字体（苹方 / 微软雅黑）。</span>
+        <div class="packs">
+          {#each FONT_PACKS as p (p.id)}
+            <button type="button" class="pk" class:on={prefs.fontPack === p.id} aria-pressed={prefs.fontPack === p.id} onclick={() => (prefs.fontPack = p.id)}>
+              <span class="pv">
+                <span class="a" style:font-family={familyStack(p.ui, 'sans-serif')}>Aa 主机</span>
+                <span class="t" style:font-family={familyStack(p.terminal, 'monospace')}>❯ ssh web-01</span>
+              </span>
+              <span class="nm">{p.name}{#if p.addon}<span class="tag acc">+ {p.addon}</span>{/if}</span>
+              <span class="fs">{p.ui} · {p.terminal}</span>
+            </button>
+          {/each}
+        </div>
       </div>
-    </div>
-  </section>
+
+      <div class="block">
+        <b>单独调整</b>
+        <div class="row">
+          <span>界面字体</span>
+          <select class="input sel" value={prefs.fontOverrides.ui ?? ''} onchange={(e) => setOverride('ui', (e.target as HTMLSelectElement).value)}>
+            <option value="">跟随字体包</option>
+            <optgroup label="内置">{#each ALL_UI as f (f)}<option value={f}>{f}</option>{/each}</optgroup>
+            {#if systemFonts.length}
+              <optgroup label="本机已安装">{#each systemFonts as f (f.name)}<option value={f.name}>{f.name}</option>{/each}</optgroup>
+            {/if}
+          </select>
+        </div>
+        <div class="row">
+          <span>终端字体</span>
+          <select class="input sel" value={prefs.fontOverrides.terminal ?? ''} onchange={(e) => setOverride('terminal', (e.target as HTMLSelectElement).value)}>
+            <option value="">跟随字体包</option>
+            <optgroup label="内置">
+              {#each ALL_MONO as f (f)}<option value={f}>{f}</option>{/each}
+              <option value="Maple Mono CN">Maple Mono CN（需下载增强包）</option>
+            </optgroup>
+            {#if systemMono.length}
+              <optgroup label="本机已安装（等宽）">{#each systemMono as f (f.name)}<option value={f.name}>{f.name}</option>{/each}</optgroup>
+            {/if}
+          </select>
+        </div>
+        <div class="row">
+          <span>终端字号</span>
+          <div class="stepper">
+            <button class="icon-btn" type="button" aria-label="减小字号" onclick={() => setSize(-1)}>−</button>
+            <span class="mono">{prefs.terminalFontSize}</span>
+            <button class="icon-btn" type="button" aria-label="增大字号" onclick={() => setSize(1)}>+</button>
+          </div>
+        </div>
+      </div>
+
+      <label class="check big">
+        <input type="checkbox" bind:checked={prefs.screenReader} />
+        <span><b>屏幕阅读器模式</b><br /><span class="sub">让 VoiceOver / 讲述人可以朗读终端内容。终端字号也可以用 ⌘+ / ⌘− / ⌘0 调整。</span></span>
+      </label>
+
+      <FontAddons />
+    </section>
+  {:else if tab === 'sync'}
+    <section>
+      <p class="sub">
+        端到端加密：数据在本机用你的主密码派生的密钥加密后才上传，云端只能看到密文。主机、代码片段、端口转发、已知主机、偏好设置会同步；私钥和密码默认只保存在本机。
+      </p>
+      <div class="field">
+        <span>同步位置</span>
+        <div class="seg wrap" role="group" aria-label="同步后端">
+          {#each BACKENDS as b (b.type)}
+            <button type="button" aria-pressed={backendType === b.type} onclick={() => (backendType = b.type)}>{b.label}</button>
+          {/each}
+        </div>
+      </div>
+
+      {#if backendType === 'folder'}
+        <div class="row gap">
+          <input class="input mono grow" bind:value={form.path} placeholder="选择 iCloud Drive、Syncthing 或网盘同步目录" />
+          <button class="btn ghost" type="button" onclick={pickFolder}>选择…</button>
+        </div>
+      {:else if backendType === 's3'}
+        <div class="form-grid">
+          <label class="field full"><span>Endpoint（AWS 可留空；R2 / MinIO 必填）</span><input class="input mono" bind:value={form.endpoint} placeholder="https://<account>.r2.cloudflarestorage.com" /></label>
+          <label class="field"><span>Bucket</span><input class="input mono" bind:value={form.bucket} /></label>
+          <label class="field"><span>Region</span><input class="input mono" bind:value={form.region} placeholder="auto" /></label>
+          <label class="field"><span>Access Key ID</span><input class="input mono" bind:value={form.accessKeyId} /></label>
+          <label class="field"><span>Secret Access Key</span><input class="input mono" type="password" bind:value={form.secretAccessKey} /></label>
+          <label class="field full"><span>目录前缀（可选）</span><input class="input mono" bind:value={form.root} /></label>
+        </div>
+      {:else if backendType === 'webdav'}
+        <div class="form-grid">
+          <label class="field full"><span>WebDAV 地址</span><input class="input mono" bind:value={form.endpoint} placeholder="https://dav.example.com/remote.php/dav/files/me" /></label>
+          <label class="field"><span>用户名</span><input class="input mono" bind:value={form.username} /></label>
+          <label class="field"><span>密码 / 应用密码</span><input class="input mono" type="password" bind:value={form.password} /></label>
+          <label class="field full"><span>目录（可选）</span><input class="input mono" bind:value={form.root} /></label>
+        </div>
+      {:else}
+        <p class="sub">
+          需要你在对应平台的开发者控制台注册一个“桌面应用”类型的 OAuth 客户端，回调地址允许 <code>http://127.0.0.1</code>。Vornel 只申请访问自己创建的文件的权限。
+        </p>
+        <div class="form-grid">
+          <label class="field"><span>Client ID</span><input class="input mono" bind:value={form.clientId} /></label>
+          <label class="field"><span>Client Secret（如平台提供）</span><input class="input mono" type="password" bind:value={form.clientSecret} /></label>
+        </div>
+      {/if}
+
+      {#if needPw}
+        <div class="pw">
+          <b>{needPw === 'new' ? '设置主密码' : '输入主密码'}</b>
+          <span class="sub">
+            {needPw === 'new'
+              ? '云端还没有同步库。主密码用来加密同步数据，其他设备加入时需要输入。请牢记，忘记后无法找回。'
+              : '云端已有同步库，输入创建它时设置的主密码以加入。'}
+          </span>
+          <input class="input" type="password" bind:value={masterPw} placeholder="主密码" />
+          {#if needPw === 'new'}<input class="input" type="password" bind:value={masterPw2} placeholder="再输入一次" />{/if}
+        </div>
+      {/if}
+
+      {#if syncErr}<p class="error-box">{syncErr}</p>{/if}
+      {#if syncMsg}<p class="ok">{syncMsg}</p>{/if}
+
+      <div class="dialog-actions">
+        {#if cfg}<button class="btn danger" type="button" onclick={disconnect}>断开同步</button>{/if}
+        <span class="grow"></span>
+        {#if isOAuth}
+          <button class="btn ghost" type="button" onclick={authorize} disabled={syncBusy}>授权</button>
+        {:else}
+          <button class="btn ghost" type="button" onclick={saveBackend}>保存</button>
+        {/if}
+        <button class="btn" type="button" onclick={syncNow} disabled={!cfg || syncBusy}>
+          <Icon name="refresh" size={14} />{syncBusy ? '同步中…' : '立即同步'}
+        </button>
+      </div>
+    </section>
+  {:else if tab === 'security'}
+    <section>
+      <label class="check big">
+        <input type="checkbox" bind:checked={prefs.syncSecrets} />
+        <span><b>同步保存的密码</b><br /><span class="sub">开启后，保存在 Vault 中的主机密码也会加密上传到云端。私钥是否同步在“密钥串”中单独设置。</span></span>
+      </label>
+      <div class="block">
+        <b>本机 Vault</b>
+        <span class="sub">
+          所有数据用随机生成的数据密钥加密，数据密钥保存在系统钥匙串（macOS Keychain / Windows 凭据管理器）。重置会清空本机所有数据；开启了同步的话可以重新同步回来。
+        </span>
+        <div><button class="btn danger" type="button" onclick={resetVault}>{confirmReset ? '确认清空本机数据？' : '重置本机 Vault'}</button></div>
+      </div>
+    </section>
+  {:else}
+    <section>
+      <p class="sub">
+        Vornel 0.1 · 源码以 PolyForm Noncommercial 1.0.0 许可公开，禁止商业使用。<br />
+        Copyright © 2026 lettimepassby · github.com/lettimepassby/vornel
+      </p>
+      <div class="block">
+        <b>内置字体（SIL Open Font License 1.1）</b>
+        <div class="items">
+          {#each FONT_LICENSES as f (f.name)}
+            <div class="item col">
+              <button class="lic-head" type="button" aria-expanded={openLicense === f.name} onclick={() => (openLicense = openLicense === f.name ? null : f.name)}>
+                <b>{f.name}</b><span class="tag">OFL-1.1</span><span class="grow"></span><span class="sub">{openLicense === f.name ? '收起' : '查看全文'}</span>
+              </button>
+              {#if openLicense === f.name}<pre class="lic">{f.text}</pre>{/if}
+            </div>
+          {/each}
+        </div>
+      </div>
+      <div class="block">
+        <b>主要依赖</b>
+        <div class="items">
+          {#each LIBRARIES as l (l.name)}
+            <div class="item"><div class="main"><b>{l.name}</b><small>{l.url}</small></div><span class="tag">{l.license}</span></div>
+          {/each}
+        </div>
+      </div>
+    </section>
+  {/if}
 </Dialog>
 
 <style>
+  .tabs {
+    margin-bottom: 18px;
+  }
   section {
     display: flex;
     flex-direction: column;
-    gap: 22px;
+    gap: 18px;
   }
   .row {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 10px;
+  }
+  .row.gap {
+    justify-content: flex-start;
+  }
+  .grow {
+    flex: 1;
   }
   b {
     font-weight: 600;
@@ -81,17 +417,25 @@
   .block {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 8px;
   }
   .sub {
+    margin: 0;
     font-size: 12px;
     color: var(--mut);
+    line-height: 1.6;
+  }
+  .sel {
+    width: 240px;
+  }
+  .seg.wrap {
+    flex-wrap: wrap;
+    align-self: flex-start;
   }
   .packs {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
-    margin-top: 10px;
   }
   .pk {
     display: flex;
@@ -102,10 +446,6 @@
     border-radius: 11px;
     background: var(--win);
     text-align: left;
-    transition: border-color 120ms ease-out;
-  }
-  .pk:hover {
-    border-color: color-mix(in srgb, var(--acc) 50%, var(--line2));
   }
   .pk.on {
     border-color: var(--acc);
@@ -134,16 +474,12 @@
   .nm {
     display: flex;
     align-items: center;
-    padding: 0 2px;
+    gap: 6px;
     font-weight: 600;
+    padding: 0 2px;
   }
-  .chk {
-    margin-left: auto;
-    color: var(--acc);
-    opacity: 0;
-  }
-  .pk.on .chk {
-    opacity: 1;
+  .nm .tag {
+    font-size: 10px;
   }
   .fs {
     padding: 0 2px 2px;
@@ -158,5 +494,50 @@
   .stepper .mono {
     min-width: 24px;
     text-align: center;
+  }
+  .pw {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px;
+    border-radius: 10px;
+    background: var(--accbg);
+  }
+  .ok {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--ok);
+  }
+  .check.big {
+    align-items: flex-start;
+    color: var(--fg);
+  }
+  .check.big input {
+    margin-top: 3px;
+  }
+  .item.col {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0;
+  }
+  .lic-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border: 0;
+    background: none;
+    text-align: left;
+  }
+  .lic {
+    margin: 0;
+    padding: 12px 14px;
+    max-height: 260px;
+    overflow: auto;
+    border-top: 1px solid var(--line);
+    font: 11px/1.6 var(--f-mono);
+    white-space: pre-wrap;
+    color: var(--mut);
+    user-select: text;
   }
 </style>

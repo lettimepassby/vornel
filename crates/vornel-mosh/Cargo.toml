@@ -1,0 +1,20 @@
+[package]
+name = "vornel-mosh"
+description = "Vornel 的 Mosh 客户端：按协议规范独立实现的状态同步协议（SSP）"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license-file.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+tokio = { workspace = true, features = ["net"] }
+aes = "0.9"
+base64 = "0.23"
+flate2 = "1"
+ocb3 = { version = "0.2", default-features = false, features = ["alloc"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "process", "io-util"] }

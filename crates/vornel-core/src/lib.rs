@@ -1,9 +1,24 @@
-//! Vornel 的数据模型与本地存储。
+//! Vornel 的数据模型。
 //!
-//! 目前主机列表以 JSON 文件保存在应用数据目录；端到端加密的 Vault 与云同步在 M3 实现。
+//! 所有需要保存、同步的数据都实现 [`Record`]，由 `vornel-vault` 加密存储、由 `vornel-sync` 同步。
 
-mod host;
-mod store;
+mod model;
 
-pub use host::{AuthKind, Host, Protocol};
-pub use store::{HostStore, StoreError};
+pub use model::*;
+
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+use uuid::Uuid;
+
+/// 可以存进 Vault 的一条记录。
+pub trait Record: Serialize + DeserializeOwned + Clone + Send + 'static {
+    /// 记录类型名，例如 `host`。
+    const KIND: &'static str;
+
+    fn id(&self) -> Uuid;
+
+    /// 是否只保存在本机、不参与云同步（例如默认不同步的私钥）。
+    fn local_only(&self) -> bool {
+        false
+    }
+}

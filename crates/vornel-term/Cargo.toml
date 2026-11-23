@@ -1,0 +1,20 @@
+[package]
+name = "vornel-term"
+description = "Vornel 的 Telnet 与串口终端"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license-file.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+tokio = { workspace = true, features = ["net", "io-util"] }
+
+# iOS 没有串口；关闭默认特性以免在 Linux 上依赖 libudev（只影响端口枚举的 USB 详情）
+[target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
+serialport = { version = "4.10", default-features = false }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }

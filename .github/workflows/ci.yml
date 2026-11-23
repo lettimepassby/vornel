@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: ['**']
   pull_request:
 
 concurrency:
@@ -30,8 +30,58 @@ jobs:
       - run: npm run check
       - run: npm run build
 
-  rust:
-    name: Rust 检查与测试
+  crates:
+    name: Rust 库（测试）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: crates
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --exclude vornel --all-targets
+      - run: cargo test --workspace --exclude vornel
+      - name: Mosh 端到端测试（连接真实的 mosh-server）
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mosh
+          cargo test -p vornel-mosh -- --ignored --nocapture
+      - name: SSH 端到端测试（连接真实的 sshd）
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y openssh-server
+          D=$RUNNER_TEMP/sshd; mkdir -p $D
+          ssh-keygen -q -t ed25519 -N '' -f $D/host_key
+          ssh-keygen -q -t ed25519 -N '' -C vornel-test -f $D/client_key
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          cat $D/client_key.pub >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys
+          cat > $D/sshd_config <<CFG
+          Port 2222
+          ListenAddress 127.0.0.1
+          HostKey $D/host_key
+          PidFile $D/sshd.pid
+          AuthorizedKeysFile .ssh/authorized_keys
+          PasswordAuthentication no
+          KbdInteractiveAuthentication no
+          UsePAM no
+          AllowTcpForwarding yes
+          Subsystem sftp internal-sftp
+          StrictModes no
+          LogLevel DEBUG2
+          CFG
+          # 运行器账号的密码处于锁定状态；在 UsePAM no 时 sshd 会拒绝锁定账号的公钥登录
+          sudo usermod -p '*' "$(whoami)"
+          chmod 755 "$HOME"
+          sudo mkdir -p /run/sshd
+          sudo /usr/sbin/sshd -f $D/sshd_config -E $D/sshd.log
+          export VORNEL_TEST_SSH_PORT=2222 VORNEL_TEST_SSH_USER=$(whoami) VORNEL_TEST_SSH_KEY=$D/client_key
+          cargo test -p vornel-ssh --test sshd -- --ignored --nocapture --test-threads=1 || { echo "----- sshd.log -----"; sudo cat $D/sshd.log | tail -80; exit 1; }
+
+  app:
+    name: Tauri 应用（检查）
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -39,13 +89,15 @@ jobs:
       - name: 安装 Tauri 的 Linux 依赖
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libudev-dev
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt, clippy
+          components: clippy
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: app
 
       - uses: actions/setup-node@v5
         with:
@@ -59,6 +111,5 @@ jobs:
           npm ci
           npx tauri icon app-icon.svg
 
-      - run: cargo fmt --all --check
-      - run: cargo clippy --workspace --all-targets
-      - run: cargo test --workspace
+      - run: cargo clippy -p vornel --all-targets
+      - run: cargo test -p vornel

@@ -16,8 +16,8 @@ export default defineConfig({
   },
   envPrefix: ['VITE_', 'TAURI_ENV_'],
   build: {
-    // macOS 12+ / iOS 15+ 的 WKWebView、Windows 的 WebView2 都支持
-    target: ['safari15', 'chrome110'],
+    // 界面用到 CSS color-mix，需要 Safari 16.2+（macOS 13+ / iOS 16.4+）与 WebView2
+    target: ['safari16', 'chrome111'],
     assetsInlineLimit: 0,
     // 桌面应用从本地加载，xterm.js 打成一个较大的包没有问题
     chunkSizeWarningLimit: 1200,
