@@ -1,0 +1,210 @@
+name: Updater E2E
+
+# 端到端验证应用内自动更新（含签名校验）：
+# 用仓库里的正式签名密钥打包旧版（0.0.1）和新版（9.9.9）AppImage，更新地址指向本机 http.server，
+# 再用 tauri-driver 驱动旧版：
+#   - 正向：发现新版本 → 更新并重启 → 磁盘上的 AppImage 变成新版本，重新启动后显示新版本、不再提示更新
+#   - 反向：清单里的签名换成另一把临时密钥签的 / 更新包被篡改 → 界面报错，AppImage 不变
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+concurrency:
+  group: updater-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # 测试用的包不需要正式发布的体积优化，关掉 LTO 以缩短两次打包的时间
+  CARGO_PROFILE_RELEASE_LTO: 'false'
+  CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
+  OLD_VERSION: 0.0.1
+  NEW_VERSION: 9.9.9
+  PORT: 8099
+
+jobs:
+  updater:
+    name: 应用内更新（AppImage + 签名校验）
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: 安装依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
+            webkit2gtk-driver xvfb libfuse2t64 file fonts-noto-cjk
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: updater-e2e
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/vornel/package-lock.json
+
+      - name: 安装前端依赖并生成图标
+        working-directory: apps/vornel
+        run: |
+          npm ci
+          npx tauri icon app-icon.svg
+
+      - name: 打包旧版与新版 AppImage（正式密钥签名）
+        working-directory: apps/vornel
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          U=$RUNNER_TEMP/updater
+          mkdir -p $U/old $U/new
+          for v in $OLD_VERSION $NEW_VERSION; do
+            cat > $U/conf-$v.json <<JSON
+          {
+            "version": "$v",
+            "plugins": {
+              "updater": {
+                "endpoints": ["http://127.0.0.1:$PORT/latest.json"],
+                "dangerousInsecureTransportProtocol": true
+              }
+            }
+          }
+          JSON
+            npx tauri build --bundles appimage --config $U/conf-$v.json
+            dir=$([ $v = $OLD_VERSION ] && echo old || echo new)
+            ls -la $GITHUB_WORKSPACE/target/release/bundle/appimage/
+            cp $GITHUB_WORKSPACE/target/release/bundle/appimage/Vornel_${v}_amd64.AppImage $U/$dir/Vornel.AppImage
+            cp $GITHUB_WORKSPACE/target/release/bundle/appimage/Vornel_${v}_amd64.AppImage.sig $U/$dir/Vornel.AppImage.sig
+          done
+          ls -la $U/old $U/new
+          echo "== 新版签名（base64 解码后）"; base64 -d $U/new/Vornel.AppImage.sig; echo
+
+      - name: 准备更新服务器（正确签名 / 错误密钥 / 篡改的包）
+        run: |
+          set -euo pipefail
+          U=$RUNNER_TEMP/updater
+          S=$U/srv
+          mkdir -p $S
+          cp $U/new/Vornel.AppImage $S/Vornel_${NEW_VERSION}_amd64.AppImage
+          # 篡改的包：在正式签过名的新版后面追加一个字节
+          cp $U/new/Vornel.AppImage $S/tampered.AppImage
+          printf 'x' >> $S/tampered.AppImage
+          # 另一把临时密钥，给同一个新版包签名
+          cd apps/vornel
+          npx tauri signer generate --ci -p wrong-pass -w $U/wrong.key
+          cp $U/new/Vornel.AppImage $U/wrong.AppImage
+          npx tauri signer sign -f $U/wrong.key -p wrong-pass $U/wrong.AppImage
+          cd $GITHUB_WORKSPACE
+          manifest() { # 文件名 签名文件 URL 里的包
+            python3 - "$1" "$2" "$3" <<'PY'
+          import json, os, sys
+          out, sig, pkg = sys.argv[1:]
+          json.dump({
+              "version": os.environ["NEW_VERSION"],
+              "notes": "updater e2e",
+              "pub_date": "2026-01-01T00:00:00Z",
+              "platforms": {"linux-x86_64": {
+                  "url": f"http://127.0.0.1:{os.environ['PORT']}/{pkg}",
+                  "signature": open(sig).read().strip(),
+              }},
+          }, open(out, "w"), indent=2)
+          PY
+          }
+          manifest $U/latest-ok.json $U/new/Vornel.AppImage.sig Vornel_${NEW_VERSION}_amd64.AppImage
+          manifest $U/latest-wrongkey.json $U/wrong.AppImage.sig Vornel_${NEW_VERSION}_amd64.AppImage
+          manifest $U/latest-tampered.json $U/new/Vornel.AppImage.sig tampered.AppImage
+          cat $U/latest-ok.json
+          (cd $S && nohup python3 -m http.server $PORT --bind 127.0.0.1 >$U/http.log 2>&1 &)
+          for i in $(seq 20); do ss -ltn | grep -q ":$PORT\b" && break; sleep 1; done
+          echo "OLD_SHA=$(sha256sum $U/old/Vornel.AppImage | cut -d' ' -f1)" >> $GITHUB_ENV
+          echo "NEW_SHA=$(sha256sum $U/new/Vornel.AppImage | cut -d' ' -f1)" >> $GITHUB_ENV
+          sha256sum $U/old/Vornel.AppImage $U/new/Vornel.AppImage $S/tampered.AppImage
+
+      - name: 安装 tauri-driver 与测试依赖
+        run: |
+          cargo install tauri-driver --locked
+          cd e2e && npm ci
+
+      - name: 启动 Xvfb 与 tauri-driver
+        run: |
+          Xvfb :98 -screen 0 1440x900x24 >/dev/null 2>&1 &
+          sleep 1
+          DISPLAY=:98 nohup tauri-driver >$RUNNER_TEMP/tauri-driver.log 2>&1 &
+          sleep 3
+
+      - name: 正向：发现新版本 → 更新并重启 → AppImage 被替换
+        env:
+          DISPLAY: ':98'
+          MODE: ok
+        run: |
+          set -euo pipefail
+          U=$RUNNER_TEMP/updater
+          A=$RUNNER_TEMP/app/Vornel.AppImage
+          mkdir -p $(dirname $A)
+          install -m 755 $U/old/Vornel.AppImage $A
+          cp $U/latest-ok.json $U/srv/latest.json
+          echo "更新前 sha256：$(sha256sum $A)"
+          cd e2e
+          VORNEL_APP=$A RUN_VERSION=$OLD_VERSION node updater.mjs
+          echo "更新后 sha256：$(sha256sum $A)"
+          # 应用应当已经自行重新启动（这个进程不在 WebDriver 控制下，下一步重新启动它来检查）
+          sleep 5
+          ps -eo pid,args | grep -i '[v]ornel' || echo '（没有看到重启后的进程）'
+
+      - name: 正向：更新后的 AppImage 以新版本运行，不再提示更新
+        env:
+          DISPLAY: ':98'
+          MODE: verify
+        run: |
+          set -euo pipefail
+          pkill -f 'Vornel.AppImage' || true; pkill -x vornel || true; sleep 2
+          A=$RUNNER_TEMP/app/Vornel.AppImage
+          cd e2e
+          VORNEL_APP=$A RUN_VERSION=$NEW_VERSION OLD_SHA=$NEW_SHA node updater.mjs
+
+      - name: 反向：错误密钥签名 → 报错且 AppImage 不变
+        env:
+          DISPLAY: ':98'
+          MODE: bad
+        run: |
+          set -euo pipefail
+          pkill -f 'Vornel.AppImage' || true; pkill -x vornel || true; sleep 2
+          U=$RUNNER_TEMP/updater
+          A=$RUNNER_TEMP/app/Vornel.AppImage
+          install -m 755 $U/old/Vornel.AppImage $A
+          cp $U/latest-wrongkey.json $U/srv/latest.json
+          cd e2e
+          VORNEL_APP=$A RUN_VERSION=$OLD_VERSION SHOT_TAG=bad-wrongkey node updater.mjs
+
+      - name: 反向：更新包被篡改 → 报错且 AppImage 不变
+        env:
+          DISPLAY: ':98'
+          MODE: bad
+        run: |
+          set -euo pipefail
+          pkill -f 'Vornel.AppImage' || true; pkill -x vornel || true; sleep 2
+          U=$RUNNER_TEMP/updater
+          A=$RUNNER_TEMP/app/Vornel.AppImage
+          install -m 755 $U/old/Vornel.AppImage $A
+          cp $U/latest-tampered.json $U/srv/latest.json
+          cd e2e
+          VORNEL_APP=$A RUN_VERSION=$OLD_VERSION SHOT_TAG=bad-tampered node updater.mjs
+
+      - name: 上传截图
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-screenshots
+          path: e2e/screenshots/
+          retention-days: 14
+
+      - name: 输出 http.server 访问日志
+        if: always()
+        run: cat $RUNNER_TEMP/updater/http.log || true
+
+      - name: 失败时输出 tauri-driver 日志
+        if: failure()
+        run: tail -200 $RUNNER_TEMP/tauri-driver.log || true
