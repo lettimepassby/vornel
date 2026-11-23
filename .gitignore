@@ -15,3 +15,7 @@ Thumbs.db
 
 # 本地工具
 .claude/settings.local.json
+
+# 端到端测试
+/e2e/node_modules/
+/e2e/screenshots/

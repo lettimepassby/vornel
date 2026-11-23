@@ -1,0 +1,12 @@
+{
+  "name": "vornel-e2e",
+  "private": true,
+  "type": "module",
+  "description": "用 tauri-driver（WebDriver）驱动真实的 Vornel 应用做端到端测试",
+  "scripts": {
+    "test": "node run.mjs"
+  },
+  "dependencies": {
+    "selenium-webdriver": "4.52.0"
+  }
+}
