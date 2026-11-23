@@ -1,0 +1,17 @@
+# Rust
+/target/
+
+# Node / 前端
+node_modules/
+/apps/vornel/dist/
+
+# Tauri 生成物（图标由 CI 根据 app-icon.svg 生成）
+/apps/vornel/src-tauri/gen/
+/apps/vornel/src-tauri/icons/
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 本地工具
+.claude/settings.local.json

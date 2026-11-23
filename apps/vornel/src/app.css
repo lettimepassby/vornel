@@ -1,0 +1,222 @@
+/* 设计令牌，与 DESIGN.md 第 3 节一致 */
+:root {
+  --f-ui: 'PingFang SC', 'Microsoft YaHei UI', system-ui, sans-serif;
+  --f-mono: ui-monospace, 'PingFang SC', monospace;
+  --f-term: ui-monospace, 'PingFang SC', monospace;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+:root[data-theme='ink'] {
+  color-scheme: dark;
+  --win: #0e0e10;
+  --sb: #131316;
+  --raise: #1a1a1e;
+  --pane: #0b0b0d;
+  --line: rgba(255, 255, 255, 0.07);
+  --line2: rgba(255, 255, 255, 0.12);
+  --fg: #ededf0;
+  --mut: #9a9aa3;
+  --dim: #6b6b75;
+  --acc: #8ea2ff;
+  --on-acc: #0b0b0d;
+  --accbg: rgba(142, 162, 255, 0.14);
+  --sel: rgba(255, 255, 255, 0.07);
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --err: #f87171;
+  --scrim: rgba(0, 0, 0, 0.55);
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme='paper'] {
+  color-scheme: light;
+  --win: #fbfaf7;
+  --sb: #f3f1ec;
+  --raise: #ffffff;
+  --pane: #ffffff;
+  --line: rgba(28, 27, 25, 0.08);
+  --line2: rgba(28, 27, 25, 0.14);
+  --fg: #1c1b19;
+  --mut: #625f59;
+  --dim: #8f8b84;
+  --acc: #4353d1;
+  --on-acc: #ffffff;
+  --accbg: rgba(67, 83, 209, 0.1);
+  --sel: rgba(28, 27, 25, 0.06);
+  --ok: #16a34a;
+  --warn: #b45309;
+  --err: #c2334d;
+  --scrim: rgba(28, 27, 25, 0.35);
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--win);
+  color: var(--fg);
+  font-family: var(--f-ui);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+
+input,
+select {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.mono {
+  font-family: var(--f-mono);
+}
+
+/* 通用按钮 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--acc);
+  color: var(--on-acc);
+  font-weight: 600;
+  font-size: 12.5px;
+  transition: filter 120ms ease-out;
+}
+.btn:hover {
+  filter: brightness(1.08);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.btn.ghost {
+  background: var(--raise);
+  color: var(--fg);
+  border: 1px solid var(--line2);
+  font-weight: 500;
+}
+.btn.danger {
+  background: transparent;
+  color: var(--err);
+  border: 1px solid var(--line2);
+  font-weight: 500;
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--mut);
+  transition: background 120ms ease-out, color 120ms ease-out;
+}
+.icon-btn:hover {
+  background: var(--sel);
+  color: var(--fg);
+}
+
+/* 表单 */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field > span {
+  font-size: 12px;
+  color: var(--mut);
+  font-weight: 500;
+}
+.input {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid var(--line2);
+  background: var(--pane);
+  outline: none;
+}
+.input:focus {
+  border-color: var(--acc);
+  box-shadow: 0 0 0 2px var(--accbg);
+}
+
+.seg {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--sel);
+}
+.seg button {
+  height: 26px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--mut);
+  font-size: 12.5px;
+}
+.seg button[aria-pressed='true'] {
+  background: var(--raise);
+  color: var(--fg);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dim);
+  flex: none;
+}
+.dot.ok {
+  background: var(--ok);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent);
+}
+.dot.busy {
+  background: var(--warn);
+}
+.dot.err {
+  background: var(--err);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

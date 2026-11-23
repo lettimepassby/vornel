@@ -1,0 +1,30 @@
+[workspace]
+resolver = "2"
+members = ["crates/vornel-core", "crates/vornel-ssh", "apps/vornel/src-tauri"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["lettimepassby"]
+license-file = "LICENSE.md"
+repository = "https://github.com/lettimepassby/vornel"
+rust-version = "1.85"
+
+[workspace.dependencies]
+vornel-core = { path = "crates/vornel-core" }
+vornel-ssh = { path = "crates/vornel-ssh" }
+
+tokio = { version = "1.54", features = ["rt-multi-thread", "macros", "sync", "time"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+uuid = { version = "1.29", features = ["v4", "serde"] }
+# 用纯 Rust 的 ring 作为加密后端，避免 aws-lc-rs 在 Windows / iOS 上额外依赖 cmake、nasm
+russh = { version = "0.65", default-features = false, features = ["flate2", "ring", "rsa"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

@@ -1,0 +1,14 @@
+[package]
+name = "vornel-ssh"
+description = "Vornel 的 SSH 连接：认证、主机密钥校验、交互式 Shell"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license-file.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+russh.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
