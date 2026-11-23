@@ -22,8 +22,8 @@
 ├───────────────── Tauri IPC（二进制 Channel）────────────────┤
 │  vornel-core（Rust，tokio 异步）                            │
 │  ├─ vornel-ssh   russh + russh-sftp：跳板机、端口转发、Agent  │
-│  ├─ vornel-rdp   IronRDP                                   │
-│  ├─ vornel-vnc   vnc-rs（可选）                             │
+│  ├─ vornel-remote IronRDP（RDP）+ vnc-rs（VNC）              │
+│  ├─ vornel-mosh  Mosh；vornel-term Telnet / 串口            │
 │  ├─ vornel-vault 本地 SQLite + 加密                         │
 │  └─ vornel-sync  OpenDAL：S3 / GDrive / OneDrive / WebDAV  │
 └──────────────────────────────────────────────────────────┘
@@ -152,16 +152,19 @@ vornel/
 ```
 vornel/
 ├─ crates/
-│  ├─ vornel-core/    # 数据模型、错误类型、事件总线
-│  ├─ vornel-ssh/     # SSH、SFTP、转发、跳板机
-│  ├─ vornel-rdp/     # IronRDP 封装
-│  ├─ vornel-vault/   # SQLite + 加密
-│  └─ vornel-sync/    # OpenDAL 后端 + 合并逻辑
+│  ├─ vornel-core/    # 数据模型：主机、密钥、密码、代码片段、端口转发、已知主机、偏好设置
+│  ├─ vornel-vault/   # SQLite + XChaCha20-Poly1305 加密存储，HLC 时钟，按字段 LWW 合并
+│  ├─ vornel-sync/    # OpenDAL 后端 + 增量同步 + OAuth（PKCE）
+│  ├─ vornel-ssh/     # SSH、SFTP、端口转发、跳板机、Agent、密钥生成
+│  ├─ vornel-mosh/    # Mosh 客户端（按协议规范独立实现）
+│  ├─ vornel-term/    # Telnet、串口
+│  └─ vornel-remote/  # RDP（IronRDP）、VNC（vnc-rs）
 ├─ apps/
 │  └─ vornel/         # Tauri 应用
-│     ├─ src-tauri/   # Rust 端：命令、IPC 桥接
+│     ├─ src-tauri/   # Rust 端：命令、IPC 桥接、vornel-font:// 协议
 │     └─ src/         # 前端：Svelte 5 + xterm.js
-├─ docs/
+├─ design/            # 设计稿与字体包清单
+├─ .github/workflows/ # CI、桌面打包、iOS 构建、字体增强包
 ├─ Cargo.toml         # workspace
 └─ LICENSE.md         # PolyForm Noncommercial 1.0.0
 ```
@@ -170,13 +173,30 @@ vornel/
 
 ## 7. 里程碑
 
-| 阶段 | 内容 |
+| 阶段 | 内容 | 状态 |
+|---|---|---|
+| **M1** | 桌面端 SSH 终端、主机管理、密钥管理 | ✅ 完成 |
+| **M2** | SFTP 双栏文件管理、端口转发、跳板机 | ✅ 完成 |
+| **M3** | 加密 Vault 和同步（本地文件夹 / S3 / WebDAV / Google Drive / OneDrive / Dropbox） | ✅ 完成 |
+| **M4** | iOS 版本 | ✅ 完成（发布需配置签名证书，见 README） |
+| **M5** | RDP、VNC、Mosh、Telnet、串口 | ✅ 完成 |
+
+### 7.1 测试
+
+| 范围 | 方式 |
 |---|---|
-| **M1** | 桌面端 SSH 终端、主机管理、密钥管理 |
-| **M2** | SFTP 双栏文件管理、端口转发、跳板机 |
-| **M3** | 加密 Vault 和同步（先做本地文件夹/S3，再做 Google Drive） |
-| **M4** | iOS 版本 |
-| **M5** | RDP，之后再加 VNC、Mosh、Telnet、串口 |
+| 数据模型、Vault、同步引擎、协议编解码 | 单元测试 |
+| 云同步 | 两台“设备”经由本地文件夹后端互相同步的端到端测试 |
+| SSH | CI 中启动真实 sshd：主机密钥首次信任与变化检测、Shell、命令执行、SFTP 往返、本地与 SOCKS5 转发、错误密钥 |
+| Mosh | CI 中启动真实 mosh-server：执行命令并读回输出、shell 退出后会话结束 |
+| Telnet | 本机模拟服务器：选项协商、窗口大小、输入转义 |
+
+### 7.2 已知限制
+
+- **RDP**：只支持 NTLM 认证（不支持 Kerberos）；暂不支持剪贴板、音频；服务器端更改分辨率需要重新连接。
+- **Mosh**：不做本地回显预测；只在服务器增量的基准状态与本地一致时应用，丢包时略有延迟。
+- **iOS**：切到后台约 30 秒后系统会断开网络，回到前台时自动重连 SSH；Mosh 会话可以直接恢复。端口转发只在前台有效，没有串口和 SSH Agent。
+- **FIDO / 硬件密钥**：通过系统 SSH Agent 使用（Agent 支持即可）。
 
 ---
 

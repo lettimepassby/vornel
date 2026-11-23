@@ -8,17 +8,27 @@
 
 ---
 
-> **开发中**：目前处于 M1 阶段，桌面端可以保存主机、通过 SSH 连接并使用终端。
+## 功能
 
-## 特性与路线图
+- **协议**：SSH、Mosh、Telnet、串口、RDP、VNC
+- **SSH**：密码 / 密钥串 / 私钥文件 / 系统 SSH Agent 认证，跳板机，Agent 转发，主机密钥首次信任与变化检测
+- **SFTP**：本机与远端双栏文件管理，上传、下载、重命名、删除、新建文件夹
+- **端口转发**：本地（-L）、远程（-R）、SOCKS5 动态（-D）
+- **密钥串**：生成 ed25519 密钥、导入私钥；私钥只保存在本机加密 Vault 中
+- **代码片段**：一键发送到当前终端
+- **端到端加密同步**：本地文件夹（iCloud Drive / Syncthing）、S3 / R2 / MinIO、WebDAV、Google Drive、OneDrive、Dropbox
+- **外观**：深色 Ink / 浅色 Paper 主题，6 套字体包，可下载的中文增强包
+- **平台**：macOS、Windows、iOS
 
 | 里程碑 | 内容 | 状态 |
 |---|---|---|
-| M1 | 桌面端 SSH 终端、主机管理、字体包与深浅主题 | 🚧 进行中 |
-| M2 | SFTP 双栏文件管理、端口转发、跳板机、密钥串、代码片段 | 计划中 |
-| M3 | 端到端加密 Vault，同步到 S3 / Google Drive / WebDAV / 本地文件夹 | 计划中 |
-| M4 | iOS 版本 | 计划中 |
-| M5 | RDP、VNC、Mosh、Telnet、串口 | 计划中 |
+| M1 | 桌面端 SSH 终端、主机管理、密钥管理 | ✅ |
+| M2 | SFTP 双栏、端口转发、跳板机 | ✅ |
+| M3 | 加密 Vault 与云同步 | ✅ |
+| M4 | iOS | ✅ |
+| M5 | RDP、VNC、Mosh、Telnet、串口 | ✅ |
+
+已知限制见 [ARCHITECTURE.md 7.2](ARCHITECTURE.md#72-已知限制)。
 
 ## 技术栈
 
@@ -37,6 +47,20 @@
 - 每次推送到 `main` 会运行 **CI**（前端类型检查、Rust 格式 / Clippy / 测试）。
 - 在 Actions 页面手动运行 **Build** 工作流，可以得到 macOS 与 Windows 的安装包。
 - 推送 `v*` 标签会自动打包并创建草稿 Release。
+- **iOS** 工作流在每次推送到 `main` 时构建模拟器版本，验证能否编译。
+
+### iOS 签名
+
+要得到可安装的 IPA（TestFlight / App Store），在仓库的 **Settings → Secrets and variables → Actions** 中添加：
+
+| Secret | 内容 |
+|---|---|
+| `APPLE_DEVELOPMENT_TEAM` | 开发者团队 ID（10 位） |
+| `IOS_CERTIFICATE` | 分发证书 `.p12` 文件的 base64（`base64 -i cert.p12`） |
+| `IOS_CERTIFICATE_PASSWORD` | 导出 `.p12` 时设置的密码 |
+| `IOS_MOBILE_PROVISION` | App Store 描述文件 `.mobileprovision` 的 base64，Bundle ID 为 `com.lettimepassby.vornel` |
+
+配置后，iOS 工作流会额外构建签名的 IPA，作为 Actions 产物上传。
 
 本地开发（可选）：
 
