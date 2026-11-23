@@ -71,7 +71,9 @@ export async function installUpdate() {
     });
     await relaunch();
   } catch (e) {
-    updater.error = `更新失败：${String(e)}`;
+    const msg = String(e);
+    // 签名不对说明更新包不是官方发布的（或下载被篡改），给出明确的中文说明，原始错误附在后面
+    updater.error = /signature/i.test(msg) ? `更新失败：更新包签名校验未通过，已取消安装（${msg}）` : `更新失败：${msg}`;
     updater.downloading = false;
   }
 }

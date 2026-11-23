@@ -3,7 +3,7 @@ name: Updater E2E
 # 端到端验证应用内自动更新（含签名校验）：
 # 用仓库里的正式签名密钥打包旧版（0.0.1）和新版（9.9.9）AppImage，更新地址指向本机 http.server，
 # 再用 tauri-driver 驱动旧版：
-#   - 正向：发现新版本 → 更新并重启 → 磁盘上的 AppImage 变成新版本
+#   - 正向：发现新版本 → 更新并重启 → 磁盘上的 AppImage 变成新版本，重新启动后显示新版本、不再提示更新
 #   - 反向：清单里的签名换成另一把临时密钥签的 / 更新包被篡改 → 界面报错，AppImage 不变
 on:
   push:
@@ -34,7 +34,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
-            webkit2gtk-driver xvfb libfuse2t64 file fonts-noto-cjk imagemagick
+            webkit2gtk-driver xvfb libfuse2t64 file fonts-noto-cjk
 
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
@@ -148,12 +148,22 @@ jobs:
           cp $U/latest-ok.json $U/srv/latest.json
           echo "更新前 sha256：$(sha256sum $A)"
           cd e2e
-          VORNEL_APP=$A node updater.mjs
+          VORNEL_APP=$A RUN_VERSION=$OLD_VERSION node updater.mjs
           echo "更新后 sha256：$(sha256sum $A)"
-          # 应用应当已经以新版本重新启动
-          sleep 8
+          # 应用应当已经自行重新启动（这个进程不在 WebDriver 控制下，下一步重新启动它来检查）
+          sleep 5
           ps -eo pid,args | grep -i '[v]ornel' || echo '（没有看到重启后的进程）'
-          import -window root screenshots/updater-ok-99-after-relaunch.png || true
+
+      - name: 正向：更新后的 AppImage 以新版本运行，不再提示更新
+        env:
+          DISPLAY: ':98'
+          MODE: verify
+        run: |
+          set -euo pipefail
+          pkill -f 'Vornel.AppImage' || true; pkill -x vornel || true; sleep 2
+          A=$RUNNER_TEMP/app/Vornel.AppImage
+          cd e2e
+          VORNEL_APP=$A RUN_VERSION=$NEW_VERSION OLD_SHA=$NEW_SHA node updater.mjs
 
       - name: 反向：错误密钥签名 → 报错且 AppImage 不变
         env:
@@ -167,7 +177,7 @@ jobs:
           install -m 755 $U/old/Vornel.AppImage $A
           cp $U/latest-wrongkey.json $U/srv/latest.json
           cd e2e
-          VORNEL_APP=$A SHOT_TAG=bad-wrongkey node updater.mjs
+          VORNEL_APP=$A RUN_VERSION=$OLD_VERSION SHOT_TAG=bad-wrongkey node updater.mjs
 
       - name: 反向：更新包被篡改 → 报错且 AppImage 不变
         env:
@@ -181,7 +191,7 @@ jobs:
           install -m 755 $U/old/Vornel.AppImage $A
           cp $U/latest-tampered.json $U/srv/latest.json
           cd e2e
-          VORNEL_APP=$A SHOT_TAG=bad-tampered node updater.mjs
+          VORNEL_APP=$A RUN_VERSION=$OLD_VERSION SHOT_TAG=bad-tampered node updater.mjs
 
       - name: 上传截图
         if: always()

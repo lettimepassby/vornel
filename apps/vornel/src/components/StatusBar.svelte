@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Host } from '../lib/api';
   import type { PaneStatus } from './TerminalPane.svelte';
+  import { loadCurrentVersion, updater } from '../lib/updater.svelte';
 
   let { host, status }: { host: Host | null; status: PaneStatus | null } = $props();
 
@@ -11,6 +12,9 @@
     closed: '已断开',
     error: '连接失败',
   };
+
+  // 显示实际运行的版本（来自 tauri.conf.json），更新后随之变化
+  void loadCurrentVersion();
 </script>
 
 <footer class="status">
@@ -26,7 +30,7 @@
   {:else}
     <span>就绪</span>
     <span class="sp"></span>
-    <span>Vornel 0.1</span>
+    {#if updater.current}<span>Vornel {updater.current}</span>{/if}
   {/if}
 </footer>
 
