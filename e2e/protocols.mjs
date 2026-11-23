@@ -37,7 +37,15 @@ async function find(locator, timeout = 20000) {
   await driver.wait(until.elementIsVisible(el), timeout);
   return el;
 }
+// 沉浸模式下侧边栏是隐藏的：要点侧边栏里的东西时，先点标签栏的“主机”按钮把它调出来（用户的真实操作路径）
+async function showSidebarIfNeeded(locator) {
+  const q = String(locator.value ?? locator);
+  if (!/aside|主导航|新建主机|"设置"/.test(q)) return;
+  const home = await driver.findElements(By.css('button.home-btn'));
+  if (home.length && (await home[0].isDisplayed())) await home[0].click();
+}
 async function click(locator) {
+  await showSidebarIfNeeded(locator);
   const el = await find(locator);
   await el.click();
   return el;
