@@ -1,0 +1,66 @@
+name: Fonts
+
+# 生成中文字体增强包（ARCHITECTURE.md 8.4）：
+# 从上游下载原版字体，只做 TTF/OTF → woff2 格式转换（不做子集化），
+# 计算 sha256，发布到本仓库的 fonts-v1 Release。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install fonttools brotli
+
+      - name: 下载上游字体
+        run: |
+          set -euo pipefail
+          mkdir -p src out
+          # Maple Mono CN（OFL-1.1）
+          gh release download v7.9 --repo subframe7536/maple-font --pattern 'MapleMono-CN.zip' --dir src
+          unzip -q src/MapleMono-CN.zip -d src/maple
+          cp "$(find src/maple -name 'MapleMono-CN-Regular.ttf' | head -1)" src/MapleMono-CN-Regular.ttf
+          cp "$(find src/maple -name 'MapleMono-CN-Bold.ttf' | head -1)" src/MapleMono-CN-Bold.ttf
+          # 霞鹜文楷 Screen（OFL-1.1）
+          gh release download v1.530 --repo lxgw/LxgwWenKai-Screen --pattern 'LXGWWenKaiScreen.ttf' --dir src
+          # 思源黑体 Noto Sans SC 可变字体（OFL-1.1）
+          curl -fsSL -o 'src/NotoSansSC[wght].ttf' 'https://github.com/google/fonts/raw/main/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf'
+          # 许可文件
+          curl -fsSL -o out/maple-mono-cn-OFL.txt https://raw.githubusercontent.com/subframe7536/maple-font/variable/OFL.txt || true
+          curl -fsSL -o out/lxgw-wenkai-screen-OFL.txt https://raw.githubusercontent.com/lxgw/LxgwWenKai-Screen/main/OFL.txt || true
+          curl -fsSL -o out/noto-sans-sc-OFL.txt https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/OFL.txt || true
+          ls -la src
+
+      - name: 转换为 woff2 并计算 sha256
+        run: |
+          set -euo pipefail
+          for f in MapleMono-CN-Regular.ttf MapleMono-CN-Bold.ttf LXGWWenKaiScreen.ttf 'NotoSansSC[wght].ttf'; do
+            python -m fontTools.ttLib.woff2 compress -o "out/${f%.ttf}.woff2" "src/$f"
+          done
+          cd out
+          python - <<'PY'
+          import hashlib, json, os
+          files = {}
+          for name in sorted(os.listdir('.')):
+              if name.endswith('.woff2'):
+                  data = open(name, 'rb').read()
+                  files[name] = {'sha256': hashlib.sha256(data).hexdigest(), 'size': len(data)}
+          json.dump({'version': 1, 'files': files}, open('manifest.json', 'w'), indent=2)
+          print(json.dumps(files, indent=2))
+          PY
+          ls -la
+
+      - name: 发布到 fonts-v1
+        run: |
+          set -euo pipefail
+          gh release view fonts-v1 >/dev/null 2>&1 || gh release create fonts-v1 --title "中文字体增强包 v1" --notes "Vornel 按需下载的中文字体（OFL-1.1，原版字体转换为 woff2，未做子集化）。校验值见 manifest.json。" --latest=false
+          gh release upload fonts-v1 out/* --clobber
