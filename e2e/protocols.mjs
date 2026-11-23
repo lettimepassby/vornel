@@ -167,7 +167,7 @@ try {
 
     await addHost({ protocol: 'Telnet', address: '127.0.0.1', port: env('TELNET_PORT'), name: 'e2e-telnet', user: env('TELNET_USER') });
     const key = await openTerminal('e2e-telnet');
-    await find(By.xpath('//footer[contains(., "已连接")]'), 30000);
+    await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 30000);
     await waitText(key, 'login:', '登录提示');
     await shot('telnet-login');
     await keyboard('e2e-telnet', env('TELNET_USER'));
@@ -189,7 +189,7 @@ try {
     await pw.sendKeys(env('VNC_PASS'));
     if ((await pw.getAttribute('value')) !== env('VNC_PASS')) await setValue(pw, env('VNC_PASS'));
     await pw.sendKeys(Key.ENTER);
-    await find(By.xpath('//footer[contains(., "已连接")]'), 45000);
+    await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 45000);
     // 桌面底色是 #3366cc：既验证收到了画面，也验证了颜色通道顺序
     let stats;
     try {
@@ -226,7 +226,7 @@ try {
     await pw.sendKeys(env('SSH_PASS'));
     if ((await pw.getAttribute('value')) !== env('SSH_PASS')) await setValue(pw, env('SSH_PASS'));
     await pw.sendKeys(Key.ENTER);
-    await find(By.xpath('//footer[contains(., "已连接")]'), 45000);
+    await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 45000);
     // mosh 会整屏重绘（清掉之前的提示行），这个终端只属于 Mosh 会话，直接找行尾的提示符
     await waitText(key, (t) => /\$\s*$/m.test(t), 'shell 提示符', 45000);
     await shot('mosh-connected');

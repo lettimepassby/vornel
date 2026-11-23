@@ -126,7 +126,7 @@ try {
     // 先用鼠标点击密码框（会被遮挡时这里会报 ElementClickIntercepted），再用键盘输入
     const pw = await click(By.xpath('//div[@role="application"]//input[@type="password"]'));
     await pw.sendKeys(env('SSH_PASS'), Key.ENTER);
-    await find(By.xpath('//footer[contains(., "已连接")]'), 30000);
+    await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 30000);
     await waitTerminal('SHA256:');
     // 终端的最后一行必须完整显示在容器内（不能被底边切掉）
     const overflow = await driver.executeScript(`
@@ -215,7 +215,7 @@ try {
     await click(By.xpath('//aside//button[contains(., "e2e-rdp")]'));
     const pw = await type(By.xpath('//canvas[starts-with(@aria-label, "远程桌面")]/following-sibling::div//input[@type="password"]'), env('RDP_PASS'));
     await pw.sendKeys(Key.ENTER);
-    await find(By.xpath('//footer[contains(., "已连接")]'), 45000);
+    await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 45000);
     // 画布上应当有非黑色像素（收到了真实画面）
     await driver.wait(
       async () =>
