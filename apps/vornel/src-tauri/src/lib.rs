@@ -117,7 +117,14 @@ pub fn run() {
             });
 
             #[cfg(desktop)]
-            build_menu(app)?;
+            {
+                build_menu(app)?;
+                // 应用内更新：检查、下载、安装由前端驱动；装完用 process 插件重启。
+                // iOS 走 App Store，不注册这两个插件。
+                app.handle()
+                    .plugin(tauri_plugin_updater::Builder::new().build())?;
+                app.handle().plugin(tauri_plugin_process::init())?;
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

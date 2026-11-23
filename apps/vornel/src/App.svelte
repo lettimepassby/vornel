@@ -1,10 +1,12 @@
 <script lang="ts">
   import { listen } from '@tauri-apps/api/event';
+  import { untrack } from 'svelte';
   import * as api from './lib/api';
   import type { Host, Snippet } from './lib/api';
   import { listAddons } from './lib/addons';
   import { applyFontPack } from './lib/fonts';
   import { data, loadAll, persistPrefs, prefs } from './lib/store.svelte';
+  import { checkForUpdate, installUpdate, updater, updaterSupported } from './lib/updater.svelte';
   import HostDialog from './components/HostDialog.svelte';
   import Icon from './components/Icon.svelte';
   import Logo from './components/Logo.svelte';
@@ -86,6 +88,8 @@
         .map((a) => a.family);
       await refreshSync(true);
     })();
+    // 启动后静默检查一次更新（开发模式下不检查）
+    if (updaterSupported && !import.meta.env.DEV) untrack(() => void checkForUpdate(true));
     const unlisten = listen<string>('menu', (e) => {
       if (e.payload === 'close-tab' && activeKey) closeTab(activeKey);
       else if (e.payload === 'new-host') editing = { host: api.blankHost(), isNew: true };
@@ -309,6 +313,17 @@
           <button class="icon-btn" type="button" aria-label="关闭提示" onclick={() => (missingAddons = [])}><Icon name="close" size={14} /></button>
         </div>
       {/if}
+      {#if updater.update && !updater.dismissed}
+        <div class="notice" role="status">
+          {#if updater.downloading}
+            <span>正在下载 Vornel {updater.update.version}{updater.progress === null ? '…' : `（${updater.progress}%）`}，完成后自动重启。</span>
+          {:else}
+            <span>{updater.error || `发现新版本 ${updater.update.version}`}</span>
+            <button class="btn" type="button" onclick={installUpdate}>更新并重启</button>
+            <button class="icon-btn" type="button" aria-label="关闭提示" onclick={() => (updater.dismissed = true)}><Icon name="close" size={14} /></button>
+          {/if}
+        </div>
+      {/if}
       <div class="stage" class:focus={view === 'hosts' && !!activeTab}>
         {#each tabs as t (t.key)}
           <div class="ws" class:hidden={view !== 'hosts' || t.key !== activeKey || (mobile && !showSession)}>
@@ -413,7 +428,7 @@
 {/if}
 
 {#if settingsTab}
-  <SettingsDialog initialTab={settingsTab} onclose={() => { settingsTab = null; void refreshSync(false); }} />
+  <SettingsDialog initialTab={settingsTab} onclose={() => { settingsTab = null; void refreshSync(true); }} />
 {/if}
 
 <style>

@@ -28,3 +28,4 @@ vnc-rs = "0.6"
 
 [dev-dependencies]
 serde_json.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }

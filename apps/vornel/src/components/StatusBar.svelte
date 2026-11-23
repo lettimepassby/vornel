@@ -16,8 +16,10 @@
 <footer class="status">
   {#if host && status}
     <span class="st {status.state}">● {label[status.state]}</span>
-    <span>{host.username}@{host.address}:{host.port}</span>
-    <span>{host.auth.type === 'password' ? '密码' : '私钥'}</span>
+    <span>{host.username ? `${host.username}@` : ''}{host.address}:{host.port}</span>
+    {#if host.protocol === 'ssh' || host.protocol === 'mosh'}
+      <span>{host.auth.type === 'password' ? '密码' : host.auth.type === 'agent' ? 'SSH Agent' : '私钥'}</span>
+    {/if}
     <span class="sp"></span>
     <span>UTF-8</span>
     {#if status.cols && status.rows}<span>{status.cols}×{status.rows}</span>{/if}

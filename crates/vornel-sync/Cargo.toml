@@ -22,6 +22,8 @@ url = "2"
 # 统一用 ring 作为 TLS 加密后端（与 russh 一致），避免 aws-lc-rs 在 Windows / iOS 上额外依赖 cmake、nasm
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "http2", "json", "form"] }
+# OpenDAL 关闭了自动注册（会引入 aws-lc），因此需要手动安装 HTTP 传输
+opendal-http-transport-reqwest = { version = "0.59", default-features = false, features = ["rustls-no-provider"] }
 opendal = { version = "0.59", default-features = false, features = [
     "executors-tokio",
     "http-transport-reqwest-rustls-no-provider",

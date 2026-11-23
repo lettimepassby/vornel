@@ -38,9 +38,14 @@ pub enum SyncError {
 
 pub type Result<T> = std::result::Result<T, SyncError>;
 
-/// 进程启动时调用一次：把 ring 安装为 rustls 的默认加密后端。
+/// 进程启动时调用：把 ring 安装为 rustls 的默认加密后端，并为 OpenDAL 安装 HTTP 传输。
+///
+/// OpenDAL 关闭了 `auto-register-services`（它会连带启用 aws-lc），所以 HTTP 传输必须手动安装，
+/// 否则 S3、WebDAV、云盘等所有基于 HTTP 的后端都会报“default HTTP transport is not installed”。
+/// 可以重复调用。
 pub fn init_tls() {
     let _ = rustls::crypto::ring::default_provider().install_default();
+    opendal_http_transport_reqwest::install_default();
 }
 
 // ------------------------------------------------------------------ 后端配置

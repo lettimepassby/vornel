@@ -1,0 +1,200 @@
+name: E2E
+
+# 在一台运行器上启动真实服务（sshd、xrdp、x11vnc、telnetd、虚拟串口、S3、WebDAV），
+# 先跑各协议 / 同步后端的集成测试，再用 tauri-driver 驱动真实编译的 Vornel 做界面端到端测试。
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  e2e:
+    name: 真实服务集成测试 + 界面端到端
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: 安装依赖与测试服务
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
+            webkit2gtk-driver xvfb openssh-server xrdp xorgxrdp x11vnc socat rclone \
+            inetutils-telnetd openbsd-inetd fonts-noto-cjk \
+            mosh x11-xserver-utils
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: e2e
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: 启动测试服务
+        run: |
+          set -euo pipefail
+          T=$RUNNER_TEMP
+          sudo useradd -m -s /bin/bash vornel
+          echo 'vornel:Vornel-Pass-1' | sudo chpasswd
+
+          # sshd（密码认证，端口 2222）
+          mkdir -p $T/sshd && ssh-keygen -q -t ed25519 -N '' -f $T/sshd/host_key
+          cat > $T/sshd/config <<CFG
+          Port 2222
+          ListenAddress 127.0.0.1
+          HostKey $T/sshd/host_key
+          PidFile $T/sshd/pid
+          PasswordAuthentication yes
+          KbdInteractiveAuthentication no
+          UsePAM no
+          AllowTcpForwarding yes
+          Subsystem sftp internal-sftp
+          CFG
+          sudo mkdir -p /run/sshd
+          sudo /usr/sbin/sshd -f $T/sshd/config -E $T/sshd/log
+
+          # xrdp（端口 3389）：让 xrdp 能读取证书并强制 TLS（Vornel 只接受 TLS / NLA，不接受不加密的标准 RDP 安全层）
+          sudo usermod -aG ssl-cert xrdp
+          sudo sed -i 's/^security_layer=.*/security_layer=tls/' /etc/xrdp/xrdp.ini
+          sudo systemctl restart xrdp-sesman xrdp
+          # VNC（x11vnc 共享一个 Xvfb 桌面，端口 5900）
+          Xvfb :99 -screen 0 1024x768x24 >/dev/null 2>&1 &
+          sleep 1
+          x11vnc -display :99 -rfbport 5900 -passwd vnc-pw-1 -forever -shared -bg -o $T/x11vnc.log
+          # Telnet（inetutils-telnetd 由 inetd 托管，端口 2323，需要登录）
+          echo "vornel-telnet 2323/tcp" | sudo tee -a /etc/services
+          echo "vornel-telnet stream tcp nowait root /usr/sbin/telnetd telnetd" | sudo tee -a /etc/inetd.conf
+          sudo systemctl restart inetd || sudo systemctl restart openbsd-inetd
+          # 虚拟串口对
+          socat pty,raw,echo=0,link=/tmp/vornel-s0 pty,raw,echo=0,link=/tmp/vornel-s1 >/dev/null 2>&1 &
+          # S3 + WebDAV：MinIO 已停止提供社区版二进制（dl.min.io 返回 410），容器镜像也拉不到，
+          # 改用官方发布的新版 rclone（apt 里的版本没有 serve s3）。各服务失败互不影响，最后统一检查端口。
+          (
+            curl -fsSL --retry 5 -o $T/rclone.zip https://downloads.rclone.org/v1.71.2/rclone-v1.71.2-linux-amd64.zip &&
+            unzip -q -o $T/rclone.zip -d $T && install -m 755 $T/rclone-v1.71.2-linux-amd64/rclone $T/rclone-new
+          ) || echo "::warning::下载新版 rclone 失败"
+          mkdir -p $T/s3/vornel-test $T/dav
+          nohup $T/rclone-new serve s3 $T/s3 --addr 127.0.0.1:9000 --auth-key vornel,vornel-secret-1 >$T/s3.log 2>&1 &
+          nohup rclone serve webdav $T/dav --addr 127.0.0.1:8081 --user dav --pass dav-pass-1 >$T/rclone.log 2>&1 &
+          # 检查所有服务端口都在监听
+          missing=""
+          for p in 2222 3389 5900 2323 9000 8081; do
+            ok=0
+            for i in $(seq 20); do
+              if ss -ltn | grep -qE ":$p\b"; then ok=1; break; fi
+              sleep 1
+            done
+            [ $ok = 1 ] || missing="$missing $p"
+          done
+          ss -ltnp | grep -E ':(2222|3389|5900|2323|9000|8081) ' || true
+          if [ -n "$missing" ]; then
+            echo "::error::以下端口未监听:$missing"
+            exit 1
+          fi
+
+      - name: 集成测试：RDP（xrdp）/ VNC（x11vnc）
+        if: always()
+        env:
+          VORNEL_TEST_RDP_PORT: 3389
+          VORNEL_TEST_RDP_USER: vornel
+          VORNEL_TEST_RDP_PASS: Vornel-Pass-1
+          VORNEL_TEST_VNC_PORT: 5900
+          VORNEL_TEST_VNC_PASS: vnc-pw-1
+        run: cargo test -p vornel-remote --test servers -- --ignored --nocapture --test-threads=1
+
+      - name: 集成测试：Telnet（inetutils telnetd）/ 串口（socat 虚拟串口）
+        if: always()
+        env:
+          VORNEL_TEST_TELNET_PORT: 2323
+          VORNEL_TEST_TELNET_USER: vornel
+          VORNEL_TEST_TELNET_PASS: Vornel-Pass-1
+          VORNEL_TEST_SERIAL_A: /tmp/vornel-s0
+          VORNEL_TEST_SERIAL_B: /tmp/vornel-s1
+        run: cargo test -p vornel-term --test real -- --ignored --nocapture --test-threads=1
+
+      - name: 集成测试：同步到 S3（rclone serve s3）/ WebDAV（rclone）
+        if: always()
+        env:
+          VORNEL_TEST_S3_ENDPOINT: http://127.0.0.1:9000
+          VORNEL_TEST_S3_BUCKET: vornel-test
+          VORNEL_TEST_S3_KEY: vornel
+          VORNEL_TEST_S3_SECRET: vornel-secret-1
+          VORNEL_TEST_DAV_URL: http://127.0.0.1:8081
+          VORNEL_TEST_DAV_USER: dav
+          VORNEL_TEST_DAV_PASS: dav-pass-1
+        run: cargo test -p vornel-sync --test backends -- --ignored --nocapture --test-threads=1
+
+      - name: 构建应用（调试版，含前端）
+        if: always()
+        working-directory: apps/vornel
+        run: |
+          npm ci
+          npx tauri icon app-icon.svg
+          npx tauri build --debug --no-bundle
+
+      - name: 安装 tauri-driver
+        if: always()
+        run: cargo install tauri-driver --locked
+
+      - name: 界面端到端测试（真实应用 + 真实 sshd / xrdp）
+        if: always()
+        env:
+          SSH_PORT: 2222
+          SSH_USER: vornel
+          SSH_PASS: Vornel-Pass-1
+          RDP_PORT: 3389
+          RDP_USER: vornel
+          RDP_PASS: Vornel-Pass-1
+        run: |
+          Xvfb :98 -screen 0 1440x900x24 >/dev/null 2>&1 &
+          export DISPLAY=:98
+          sleep 1
+          tauri-driver >$RUNNER_TEMP/tauri-driver.log 2>&1 &
+          sleep 3
+          cd e2e
+          npm ci
+          VORNEL_APP=$GITHUB_WORKSPACE/target/debug/vornel npm test
+
+      - name: 界面端到端测试：Telnet / VNC / Mosh / 文件夹同步
+        if: always()
+        env:
+          SSH_PORT: 2222
+          SSH_USER: vornel
+          SSH_PASS: Vornel-Pass-1
+          TELNET_PORT: 2323
+          TELNET_USER: vornel
+          TELNET_PASS: Vornel-Pass-1
+          VNC_PORT: 5900
+          VNC_PASS: vnc-pw-1
+        run: |
+          # VNC 共享的 Xvfb :99 默认全黑，先铺上底色，测试据此判断画面与颜色通道
+          DISPLAY=:99 xsetroot -solid '#3366cc'
+          export DISPLAY=:98
+          pgrep -f 'Xvfb :98' >/dev/null || { Xvfb :98 -screen 0 1440x900x24 >/dev/null 2>&1 & sleep 1; }
+          pgrep -x tauri-driver >/dev/null || { tauri-driver >>$RUNNER_TEMP/tauri-driver.log 2>&1 & sleep 3; }
+          cd e2e
+          [ -d node_modules ] || npm ci
+          VORNEL_APP=$GITHUB_WORKSPACE/target/debug/vornel node protocols.mjs
+
+      - name: 上传截图
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: e2e/screenshots/
+          retention-days: 14
+
+      - name: 失败时输出服务日志
+        if: failure()
+        run: |
+          T=$RUNNER_TEMP
+          for f in $T/sshd/log $T/x11vnc.log $T/s3.log $T/rclone.log $T/tauri-driver.log /var/log/xrdp.log /var/log/xrdp-sesman.log; do
+            echo "===== $f"; sudo tail -40 "$f" 2>/dev/null || true
+          done
