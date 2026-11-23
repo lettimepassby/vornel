@@ -25,7 +25,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
-            webkit2gtk-driver xvfb openssh-server xrdp xorgxrdp x11vnc busybox socat rclone
+            webkit2gtk-driver xvfb openssh-server xrdp xorgxrdp x11vnc socat rclone \
+            inetutils-telnetd openbsd-inetd fonts-noto-cjk
 
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
@@ -64,8 +65,10 @@ jobs:
           Xvfb :99 -screen 0 1024x768x24 >/dev/null 2>&1 &
           sleep 1
           x11vnc -display :99 -rfbport 5900 -passwd vnc-pw-1 -forever -shared -bg -o $T/x11vnc.log
-          # Telnet（busybox telnetd，端口 2323，直接给 shell）
-          busybox telnetd -p 2323 -l /bin/sh
+          # Telnet（inetutils-telnetd 由 inetd 托管，端口 2323，需要登录）
+          echo "vornel-telnet 2323/tcp" | sudo tee -a /etc/services
+          echo "vornel-telnet stream tcp nowait root /usr/sbin/telnetd telnetd" | sudo tee -a /etc/inetd.conf
+          sudo systemctl restart inetd || sudo systemctl restart openbsd-inetd
           # 虚拟串口对
           socat pty,raw,echo=0,link=/tmp/vornel-s0 pty,raw,echo=0,link=/tmp/vornel-s1 >/dev/null 2>&1 &
           # S3（MinIO）
@@ -91,6 +94,8 @@ jobs:
         if: always()
         env:
           VORNEL_TEST_TELNET_PORT: 2323
+          VORNEL_TEST_TELNET_USER: vornel
+          VORNEL_TEST_TELNET_PASS: Vornel-Pass-1
           VORNEL_TEST_SERIAL_A: /tmp/vornel-s0
           VORNEL_TEST_SERIAL_B: /tmp/vornel-s1
         run: cargo test -p vornel-term --test real -- --ignored --nocapture --test-threads=1

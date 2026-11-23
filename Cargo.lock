@@ -7526,6 +7526,7 @@ dependencies = [
  "base64 0.23.1",
  "getrandom 0.4.3",
  "opendal",
+ "opendal-http-transport-reqwest",
  "reqwest",
  "rustls",
  "serde",
@@ -8379,9 +8380,9 @@ dependencies = [
 
 [[package]]
 name = "yuv"
-version = "0.8.20"
+version = "0.8.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d109d1eacc7b034329873d2d848039b365c65ab7d751b19ee84e4921c62c607"
+checksum = "c2145858fb536669bf8eef4ddfdd3dee3504239af508c4468705c4dc4d518112"
 dependencies = [
  "num-traits",
 ]

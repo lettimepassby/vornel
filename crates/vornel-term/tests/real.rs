@@ -42,7 +42,29 @@ async fn telnet_real_server_runs_command() {
     )
     .await
     .unwrap();
-    tokio::time::sleep(Duration::from_millis(500)).await;
+    // 真实的 telnetd 会要求登录
+    if let (Ok(user), Ok(pass)) = (
+        std::env::var("VORNEL_TEST_TELNET_USER"),
+        std::env::var("VORNEL_TEST_TELNET_PASS"),
+    ) {
+        let out = wait_for(&mut rx, b"login:").await;
+        assert!(
+            out.windows(6).any(|w| w == b"login:"),
+            "没有登录提示：{}",
+            String::from_utf8_lossy(&out)
+        );
+        s.write(format!("{user}\r").into_bytes());
+        let out = wait_for(&mut rx, b"assword:").await;
+        assert!(
+            out.windows(8).any(|w| w == b"assword:"),
+            "没有密码提示：{}",
+            String::from_utf8_lossy(&out)
+        );
+        s.write(format!("{pass}\r").into_bytes());
+        tokio::time::sleep(Duration::from_secs(2)).await;
+    } else {
+        tokio::time::sleep(Duration::from_millis(500)).await;
+    }
     s.write(b"echo tel-$((6*7))\r".to_vec());
     let out = wait_for(&mut rx, b"tel-42").await;
     assert!(

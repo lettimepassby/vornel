@@ -114,8 +114,9 @@ try {
 
   await check('输入密码连接真实 sshd', async () => {
     await click(By.xpath('//aside//button[contains(., "e2e-ssh")]'));
-    await type(By.css('input[type="password"]'), env('SSH_PASS'));
-    await click(button('连接'));
+    // 在密码框里按回车提交（用户最常见的操作）
+    const pw = await type(By.xpath('//div[@role="application"]//input[@type="password"]'), env('SSH_PASS'));
+    await pw.sendKeys(Key.ENTER);
     await find(By.xpath('//footer[contains(., "已连接")]'), 30000);
     await waitTerminal('SHA256:');
     await shot('ssh-connected');
@@ -190,8 +191,8 @@ try {
     await click(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'));
     await addHost({ protocol: 'RDP', address: '127.0.0.1', port: env('RDP_PORT'), name: 'e2e-rdp', user: env('RDP_USER') });
     await click(By.xpath('//aside//button[contains(., "e2e-rdp")]'));
-    await type(By.css('input[type="password"]'), env('RDP_PASS'));
-    await click(button('连接'));
+    const pw = await type(By.xpath('//canvas[starts-with(@aria-label, "远程桌面")]/following-sibling::div//input[@type="password"]'), env('RDP_PASS'));
+    await pw.sendKeys(Key.ENTER);
     await find(By.xpath('//footer[contains(., "已连接")]'), 45000);
     // 画布上应当有非黑色像素（收到了真实画面）
     await driver.wait(
