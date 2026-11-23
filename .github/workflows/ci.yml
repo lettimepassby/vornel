@@ -82,3 +82,4 @@ jobs:
           npx tauri icon app-icon.svg
 
       - run: cargo clippy -p vornel --all-targets
+      - run: cargo test -p vornel

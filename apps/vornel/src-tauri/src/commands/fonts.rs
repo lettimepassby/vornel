@@ -39,14 +39,14 @@ pub const ADDONS: &[Addon] = &[
             AddonFile {
                 name: "MapleMono-CN-Regular.woff2",
                 weight: "400",
-                sha256: "MAPLE_REGULAR_SHA256",
-                size: 0,
+                sha256: "259bfeebf3f79707ee91c06f675fc4dfa6f9d0766d2834c52ea18afe0816dff7",
+                size: 5429760,
             },
             AddonFile {
                 name: "MapleMono-CN-Bold.woff2",
                 weight: "700",
-                sha256: "MAPLE_BOLD_SHA256",
-                size: 0,
+                sha256: "774a1cfe8959aeceacefda9f754f5cf9504ffed99425521502e7fc36949a7024",
+                size: 5543488,
             },
         ],
     },
@@ -57,8 +57,8 @@ pub const ADDONS: &[Addon] = &[
         files: &[AddonFile {
             name: "NotoSansSC-VF.woff2",
             weight: "100 900",
-            sha256: "NOTO_SHA256",
-            size: 0,
+            sha256: "aef8c34277afad81ecd0227138a830263c0caea65b7aea66d1195395f097b55a",
+            size: 7782072,
         }],
     },
     Addon {
@@ -68,8 +68,8 @@ pub const ADDONS: &[Addon] = &[
         files: &[AddonFile {
             name: "LXGWWenKaiScreen.woff2",
             weight: "400",
-            sha256: "LXGW_SHA256",
-            size: 0,
+            sha256: "fd2d0a4ec4178ff09d290783a602e98d98e20c38992926a6152222f2166dbe2c",
+            size: 10319284,
         }],
     },
 ];

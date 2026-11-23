@@ -81,7 +81,7 @@ fn config(o: &RdpOptions) -> Config {
         domain: o.domain.clone(),
         client_build: 0,
         client_name: "vornel".to_owned(),
-        keyboard_type: KeyboardType::IbmEnhanced,
+        keyboard_type: KeyboardType::IBM_ENHANCED,
         keyboard_subtype: 0,
         keyboard_functional_keys_count: 12,
         keyboard_layout: 0,
@@ -264,7 +264,7 @@ where
     loop {
         let outputs = tokio::select! {
             frame = reader.read_pdu() => match frame {
-                Ok((action, payload)) => match stage.process(&mut image, action, &payload) {
+                Ok((action, payload)) => match stage.process(&mut image, action, &payload, None) {
                     Ok(o) => o,
                     Err(e) => return Some(e.to_string()),
                 },

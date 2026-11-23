@@ -1,5 +1,6 @@
 <script lang="ts">
   import { open as openDialog } from '@tauri-apps/plugin-dialog';
+  import { untrack } from 'svelte';
   import * as api from '../lib/api';
   import type { BackendConfig } from '../lib/api';
   import { ensureFamily, familyStack, FONT_PACKS } from '../lib/fonts';
@@ -12,7 +13,7 @@
   let { onclose, initialTab = 'appearance' }: { onclose: () => void; initialTab?: Tab } = $props();
 
   type Tab = 'appearance' | 'sync' | 'security' | 'about';
-  let tab = $state<Tab>(initialTab);
+  let tab = $state<Tab>(untrack(() => initialTab));
 
   // 打开设置时预加载所有字体包，让预览卡片显示真实字体
   $effect(() => {
@@ -189,10 +190,10 @@
 
 <Dialog title="设置" width={700} {onclose}>
   <div class="tabs seg" role="tablist" aria-label="设置分类">
-    <button type="button" role="tab" aria-selected={tab === 'appearance'} aria-pressed={tab === 'appearance'} onclick={() => (tab = 'appearance')}>外观</button>
-    <button type="button" role="tab" aria-selected={tab === 'sync'} aria-pressed={tab === 'sync'} onclick={() => (tab = 'sync')}>同步</button>
-    <button type="button" role="tab" aria-selected={tab === 'security'} aria-pressed={tab === 'security'} onclick={() => (tab = 'security')}>安全</button>
-    <button type="button" role="tab" aria-selected={tab === 'about'} aria-pressed={tab === 'about'} onclick={() => (tab = 'about')}>关于与开源许可</button>
+    <button type="button" role="tab" aria-selected={tab === 'appearance'} onclick={() => (tab = 'appearance')}>外观</button>
+    <button type="button" role="tab" aria-selected={tab === 'sync'} onclick={() => (tab = 'sync')}>同步</button>
+    <button type="button" role="tab" aria-selected={tab === 'security'} onclick={() => (tab = 'security')}>安全</button>
+    <button type="button" role="tab" aria-selected={tab === 'about'} onclick={() => (tab = 'about')}>关于与开源许可</button>
   </div>
 
   {#if tab === 'appearance'}

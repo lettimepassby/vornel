@@ -4,96 +4,390 @@
   "packs": [
     {
       "id": "modern",
-      "name": { "zh": "现代", "en": "Modern" },
+      "name": {
+        "zh": "现代",
+        "en": "Modern"
+      },
       "default": true,
       "roles": {
-        "ui":       { "font": "geist" },
-        "mono":     { "font": "geist-mono" },
-        "terminal": { "font": "maple-mono", "lineHeight": 1.25, "letterSpacing": 0, "ligatures": true },
-        "cjk":      { "font": "system" }
+        "ui": {
+          "font": "geist"
+        },
+        "mono": {
+          "font": "geist-mono"
+        },
+        "terminal": {
+          "font": "maple-mono",
+          "lineHeight": 1.25,
+          "letterSpacing": 0,
+          "ligatures": true
+        },
+        "cjk": {
+          "font": "system"
+        }
       },
-      "addons": [ { "role": "terminal", "font": "maple-mono-cn", "label": { "zh": "中文增强", "en": "CJK" } } ]
+      "addons": [
+        {
+          "role": "terminal",
+          "font": "maple-mono-cn",
+          "label": {
+            "zh": "中文增强",
+            "en": "CJK"
+          }
+        }
+      ]
     },
     {
       "id": "classic",
-      "name": { "zh": "经典", "en": "Classic" },
+      "name": {
+        "zh": "经典",
+        "en": "Classic"
+      },
       "roles": {
-        "ui":       { "font": "inter" },
-        "mono":     { "font": "jetbrains-mono" },
-        "terminal": { "font": "jetbrains-mono", "lineHeight": 1.2, "letterSpacing": 0, "ligatures": false },
-        "cjk":      { "font": "system" }
+        "ui": {
+          "font": "inter"
+        },
+        "mono": {
+          "font": "jetbrains-mono"
+        },
+        "terminal": {
+          "font": "jetbrains-mono",
+          "lineHeight": 1.2,
+          "letterSpacing": 0,
+          "ligatures": false
+        },
+        "cjk": {
+          "font": "system"
+        }
       },
       "addons": []
     },
     {
       "id": "plex",
-      "name": { "zh": "工程", "en": "Plex" },
-      "roles": {
-        "ui":       { "font": "ibm-plex-sans" },
-        "mono":     { "font": "ibm-plex-mono" },
-        "terminal": { "font": "ibm-plex-mono", "lineHeight": 1.2, "letterSpacing": 0, "ligatures": false },
-        "cjk":      { "font": "system" }
+      "name": {
+        "zh": "工程",
+        "en": "Plex"
       },
-      "addons": [ { "role": "cjk", "font": "noto-sans-sc", "label": { "zh": "思源黑体", "en": "Noto Sans SC" } } ]
+      "roles": {
+        "ui": {
+          "font": "ibm-plex-sans"
+        },
+        "mono": {
+          "font": "ibm-plex-mono"
+        },
+        "terminal": {
+          "font": "ibm-plex-mono",
+          "lineHeight": 1.2,
+          "letterSpacing": 0,
+          "ligatures": false
+        },
+        "cjk": {
+          "font": "system"
+        }
+      },
+      "addons": [
+        {
+          "role": "cjk",
+          "font": "noto-sans-sc",
+          "label": {
+            "zh": "思源黑体",
+            "en": "Noto Sans SC"
+          }
+        }
+      ]
     },
     {
       "id": "soft",
-      "name": { "zh": "温润", "en": "Soft" },
-      "roles": {
-        "ui":       { "font": "manrope" },
-        "mono":     { "font": "commit-mono" },
-        "terminal": { "font": "maple-mono", "lineHeight": 1.3, "letterSpacing": 0, "ligatures": true },
-        "cjk":      { "font": "system" }
+      "name": {
+        "zh": "温润",
+        "en": "Soft"
       },
-      "addons": [ { "role": "terminal", "font": "maple-mono-cn", "label": { "zh": "中文增强", "en": "CJK" } } ]
+      "roles": {
+        "ui": {
+          "font": "manrope"
+        },
+        "mono": {
+          "font": "commit-mono"
+        },
+        "terminal": {
+          "font": "maple-mono",
+          "lineHeight": 1.3,
+          "letterSpacing": 0,
+          "ligatures": true
+        },
+        "cjk": {
+          "font": "system"
+        }
+      },
+      "addons": [
+        {
+          "role": "terminal",
+          "font": "maple-mono-cn",
+          "label": {
+            "zh": "中文增强",
+            "en": "CJK"
+          }
+        }
+      ]
     },
     {
       "id": "github",
-      "name": { "zh": "GitHub 风", "en": "Hubot" },
+      "name": {
+        "zh": "GitHub 风",
+        "en": "Hubot"
+      },
       "roles": {
-        "ui":       { "font": "instrument-sans" },
-        "mono":     { "font": "monaspace-neon" },
-        "terminal": { "font": "monaspace-neon", "lineHeight": 1.25, "letterSpacing": 0, "ligatures": true },
-        "cjk":      { "font": "system" }
+        "ui": {
+          "font": "instrument-sans"
+        },
+        "mono": {
+          "font": "monaspace-neon"
+        },
+        "terminal": {
+          "font": "monaspace-neon",
+          "lineHeight": 1.25,
+          "letterSpacing": 0,
+          "ligatures": true
+        },
+        "cjk": {
+          "font": "system"
+        }
       },
       "addons": []
     },
     {
       "id": "character",
-      "name": { "zh": "个性", "en": "Character" },
-      "roles": {
-        "ui":       { "font": "space-grotesk" },
-        "mono":     { "font": "martian-mono" },
-        "terminal": { "font": "cascadia-code", "lineHeight": 1.2, "letterSpacing": 0, "ligatures": true },
-        "cjk":      { "font": "system" }
+      "name": {
+        "zh": "个性",
+        "en": "Character"
       },
-      "addons": [ { "role": "cjk", "font": "lxgw-wenkai-screen", "label": { "zh": "霞鹜文楷", "en": "LXGW WenKai" } } ]
+      "roles": {
+        "ui": {
+          "font": "space-grotesk"
+        },
+        "mono": {
+          "font": "martian-mono"
+        },
+        "terminal": {
+          "font": "cascadia-code",
+          "lineHeight": 1.2,
+          "letterSpacing": 0,
+          "ligatures": true
+        },
+        "cjk": {
+          "font": "system"
+        }
+      },
+      "addons": [
+        {
+          "role": "cjk",
+          "font": "lxgw-wenkai-screen",
+          "label": {
+            "zh": "霞鹜文楷",
+            "en": "LXGW WenKai"
+          }
+        }
+      ]
     }
   ],
-
   "fonts": {
-    "system":             { "family": ["PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei"], "source": "system" },
-
-    "geist":              { "family": "Geist",           "source": "bundled", "files": ["geist/Geist[wght].woff2"],                 "license": "OFL-1.1", "upstream": "https://github.com/vercel/geist-font" },
-    "geist-mono":         { "family": "Geist Mono",      "source": "bundled", "files": ["geist-mono/GeistMono[wght].woff2"],        "license": "OFL-1.1", "upstream": "https://github.com/vercel/geist-font" },
-    "inter":              { "family": "Inter",           "source": "bundled", "files": ["inter/Inter[opsz,wght].woff2"],            "license": "OFL-1.1", "upstream": "https://github.com/rsms/inter" },
-    "jetbrains-mono":     { "family": "JetBrains Mono",  "source": "bundled", "files": ["jetbrains-mono/JetBrainsMono[wght].woff2"],"license": "OFL-1.1", "upstream": "https://github.com/JetBrains/JetBrainsMono" },
-    "ibm-plex-sans":      { "family": "IBM Plex Sans",   "source": "bundled", "files": ["ibm-plex-sans/400.woff2", "ibm-plex-sans/500.woff2", "ibm-plex-sans/600.woff2"], "license": "OFL-1.1", "upstream": "https://github.com/IBM/plex" },
-    "ibm-plex-mono":      { "family": "IBM Plex Mono",   "source": "bundled", "files": ["ibm-plex-mono/400.woff2", "ibm-plex-mono/500.woff2", "ibm-plex-mono/600.woff2"], "license": "OFL-1.1", "upstream": "https://github.com/IBM/plex" },
-    "manrope":            { "family": "Manrope",         "source": "bundled", "files": ["manrope/Manrope[wght].woff2"],             "license": "OFL-1.1", "upstream": "https://github.com/davelab6/manrope" },
-    "commit-mono":        { "family": "Commit Mono",     "source": "bundled", "files": ["commit-mono/400.woff2", "commit-mono/700.woff2"], "license": "OFL-1.1", "upstream": "https://github.com/eigilnikolajsen/commit-mono" },
-    "maple-mono":         { "family": "Maple Mono",      "source": "bundled", "files": ["maple-mono/400.woff2", "maple-mono/700.woff2"],   "license": "OFL-1.1", "upstream": "https://github.com/subframe7536/maple-font" },
-    "instrument-sans":    { "family": "Instrument Sans", "source": "bundled", "files": ["instrument-sans/InstrumentSans[wdth,wght].woff2"], "license": "OFL-1.1", "upstream": "https://github.com/Instrument/instrument-sans" },
-    "monaspace-neon":     { "family": "Monaspace Neon",  "source": "bundled", "files": ["monaspace-neon/MonaspaceNeon[wght].woff2"], "license": "OFL-1.1", "upstream": "https://github.com/githubnext/monaspace" },
-    "space-grotesk":      { "family": "Space Grotesk",   "source": "bundled", "files": ["space-grotesk/SpaceGrotesk[wght].woff2"],  "license": "OFL-1.1", "upstream": "https://github.com/floriankarsten/space-grotesk" },
-    "martian-mono":       { "family": "Martian Mono",    "source": "bundled", "files": ["martian-mono/MartianMono[wdth,wght].woff2"], "license": "OFL-1.1", "upstream": "https://github.com/evilmartians/mono" },
-    "cascadia-code":      { "family": "Cascadia Code",   "source": "bundled", "files": ["cascadia-code/CascadiaCode[wght].woff2"],  "license": "OFL-1.1", "upstream": "https://github.com/microsoft/cascadia-code" },
-
-    "maple-mono-cn":      { "family": "Maple Mono CN",      "source": "download", "license": "OFL-1.1", "upstream": "https://github.com/subframe7536/maple-font",
-                            "download": { "files": ["MapleMono-CN-Regular.woff2", "MapleMono-CN-Bold.woff2"], "base": "https://github.com/<org>/vornel/releases/download/fonts-v1/maple-mono-cn/", "sha256": { "MapleMono-CN-Regular.woff2": "<TODO>", "MapleMono-CN-Bold.woff2": "<TODO>" } } },
-    "noto-sans-sc":       { "family": "Noto Sans SC",       "source": "download", "license": "OFL-1.1", "upstream": "https://github.com/notofonts/noto-cjk",
-                            "download": { "files": ["NotoSansSC[wght].woff2"], "base": "https://github.com/<org>/vornel/releases/download/fonts-v1/noto-sans-sc/", "sha256": { "NotoSansSC[wght].woff2": "<TODO>" } } },
-    "lxgw-wenkai-screen": { "family": "LXGW WenKai Screen", "source": "download", "license": "OFL-1.1", "upstream": "https://github.com/lxgw/LxgwWenKai-Screen",
-                            "download": { "files": ["LXGWWenKaiScreen.woff2"], "base": "https://github.com/<org>/vornel/releases/download/fonts-v1/lxgw-wenkai-screen/", "sha256": { "LXGWWenKaiScreen.woff2": "<TODO>" } } }
+    "system": {
+      "family": [
+        "PingFang SC",
+        "Hiragino Sans GB",
+        "Microsoft YaHei UI",
+        "Microsoft YaHei"
+      ],
+      "source": "system"
+    },
+    "geist": {
+      "family": "Geist",
+      "source": "bundled",
+      "files": [
+        "geist/Geist[wght].woff2"
+      ],
+      "license": "OFL-1.1",
+      "upstream": "https://github.com/vercel/geist-font"
+    },
+    "geist-mono": {
+      "family": "Geist Mono",
+      "source": "bundled",
+      "files": [
+        "geist-mono/GeistMono[wght].woff2"
+      ],
+      "license": "OFL-1.1",
+      "upstream": "https://github.com/vercel/geist-font"
+    },
+    "inter": {
+      "family": "Inter",
+      "source": "bundled",
+      "files": [
+        "inter/Inter[opsz,wght].woff2"
+      ],
+      "license": "OFL-1.1",
+      "upstream": "https://github.com/rsms/inter"
+    },
+    "jetbrains-mono": {
+      "family": "JetBrains Mono",
+      "source": "bundled",
+      "files": [
+        "jetbrains-mono/JetBrainsMono[wght].woff2"
+      ],
+      "license": "OFL-1.1",
+      "upstream": "https://github.com/JetBrains/JetBrainsMono"
+    },
+    "ibm-plex-sans": {
+      "family": "IBM Plex Sans",
+      "source": "bundled",
+      "files": [
+        "ibm-plex-sans/400.woff2",
+        "ibm-plex-sans/500.woff2",
+        "ibm-plex-sans/600.woff2"
+      ],
+      "license": "OFL-1.1",
+      "upstream": "https://github.com/IBM/plex"
+    },
+    "ibm-plex-mono": {
+      "family": "IBM Plex Mono",
+      "source": "bundled",
+      "files": [
+        "ibm-plex-mono/400.woff2",
+        "ibm-plex-mono/500.woff2",
+        "ibm-plex-mono/600.woff2"
+      ],
+      "license": "OFL-1.1",
+      "upstream": "https://github.com/IBM/plex"
+    },
+    "manrope": {
+      "family": "Manrope",
+      "source": "bundled",
+      "files": [
+        "manrope/Manrope[wght].woff2"
+      ],
+      "license": "OFL-1.1",
+      "upstream": "https://github.com/davelab6/manrope"
+    },
+    "commit-mono": {
+      "family": "Commit Mono",
+      "source": "bundled",
+      "files": [
+        "commit-mono/400.woff2",
+        "commit-mono/700.woff2"
+      ],
+      "license": "OFL-1.1",
+      "upstream": "https://github.com/eigilnikolajsen/commit-mono"
+    },
+    "maple-mono": {
+      "family": "Maple Mono",
+      "source": "bundled",
+      "files": [
+        "maple-mono/400.woff2",
+        "maple-mono/700.woff2"
+      ],
+      "license": "OFL-1.1",
+      "upstream": "https://github.com/subframe7536/maple-font"
+    },
+    "instrument-sans": {
+      "family": "Instrument Sans",
+      "source": "bundled",
+      "files": [
+        "instrument-sans/InstrumentSans[wdth,wght].woff2"
+      ],
+      "license": "OFL-1.1",
+      "upstream": "https://github.com/Instrument/instrument-sans"
+    },
+    "monaspace-neon": {
+      "family": "Monaspace Neon",
+      "source": "bundled",
+      "files": [
+        "monaspace-neon/MonaspaceNeon[wght].woff2"
+      ],
+      "license": "OFL-1.1",
+      "upstream": "https://github.com/githubnext/monaspace"
+    },
+    "space-grotesk": {
+      "family": "Space Grotesk",
+      "source": "bundled",
+      "files": [
+        "space-grotesk/SpaceGrotesk[wght].woff2"
+      ],
+      "license": "OFL-1.1",
+      "upstream": "https://github.com/floriankarsten/space-grotesk"
+    },
+    "martian-mono": {
+      "family": "Martian Mono",
+      "source": "bundled",
+      "files": [
+        "martian-mono/MartianMono[wdth,wght].woff2"
+      ],
+      "license": "OFL-1.1",
+      "upstream": "https://github.com/evilmartians/mono"
+    },
+    "cascadia-code": {
+      "family": "Cascadia Code",
+      "source": "bundled",
+      "files": [
+        "cascadia-code/CascadiaCode[wght].woff2"
+      ],
+      "license": "OFL-1.1",
+      "upstream": "https://github.com/microsoft/cascadia-code"
+    },
+    "maple-mono-cn": {
+      "family": "Maple Mono CN",
+      "source": "download",
+      "license": "OFL-1.1",
+      "upstream": "https://github.com/subframe7536/maple-font",
+      "download": {
+        "base": "https://github.com/lettimepassby/vornel/releases/download/fonts-v1/",
+        "files": [
+          "MapleMono-CN-Regular.woff2",
+          "MapleMono-CN-Bold.woff2"
+        ],
+        "sha256": {
+          "MapleMono-CN-Regular.woff2": "259bfeebf3f79707ee91c06f675fc4dfa6f9d0766d2834c52ea18afe0816dff7",
+          "MapleMono-CN-Bold.woff2": "774a1cfe8959aeceacefda9f754f5cf9504ffed99425521502e7fc36949a7024"
+        },
+        "size": {
+          "MapleMono-CN-Regular.woff2": 5429760,
+          "MapleMono-CN-Bold.woff2": 5543488
+        }
+      }
+    },
+    "noto-sans-sc": {
+      "family": "Noto Sans SC",
+      "source": "download",
+      "license": "OFL-1.1",
+      "upstream": "https://github.com/notofonts/noto-cjk",
+      "download": {
+        "base": "https://github.com/lettimepassby/vornel/releases/download/fonts-v1/",
+        "files": [
+          "NotoSansSC-VF.woff2"
+        ],
+        "sha256": {
+          "NotoSansSC-VF.woff2": "aef8c34277afad81ecd0227138a830263c0caea65b7aea66d1195395f097b55a"
+        },
+        "size": {
+          "NotoSansSC-VF.woff2": 7782072
+        }
+      }
+    },
+    "lxgw-wenkai-screen": {
+      "family": "LXGW WenKai Screen",
+      "source": "download",
+      "license": "OFL-1.1",
+      "upstream": "https://github.com/lxgw/LxgwWenKai-Screen",
+      "download": {
+        "base": "https://github.com/lettimepassby/vornel/releases/download/fonts-v1/",
+        "files": [
+          "LXGWWenKaiScreen.woff2"
+        ],
+        "sha256": {
+          "LXGWWenKaiScreen.woff2": "fd2d0a4ec4178ff09d290783a602e98d98e20c38992926a6152222f2166dbe2c"
+        },
+        "size": {
+          "LXGWWenKaiScreen.woff2": 10319284
+        }
+      }
+    }
   }
 }
