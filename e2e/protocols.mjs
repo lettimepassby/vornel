@@ -222,8 +222,8 @@ try {
     // mosh 会整屏重绘（清掉之前的提示行），这个终端只属于 Mosh 会话，直接找行尾的提示符
     await waitText(key, (t) => /\$\s*$/m.test(t), 'shell 提示符', 45000);
     await shot('mosh-connected');
-    await keyboard('e2e-mosh', 'printf mo-; seq 42 42');
-    await waitText(key, 'mo-42', 'mo-42');
+    await keyboard('e2e-mosh', 'printf moxx; seq 42 42');
+    await waitText(key, 'moxx42', 'moxx42');
     await shot('mosh-command');
   });
 

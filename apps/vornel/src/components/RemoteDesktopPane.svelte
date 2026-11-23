@@ -184,6 +184,7 @@
   .overlay {
     position: absolute;
     inset: 0;
+    z-index: 50;
     display: grid;
     place-items: center;
     background: color-mix(in srgb, var(--pane) 85%, transparent);

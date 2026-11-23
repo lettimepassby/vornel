@@ -344,10 +344,14 @@
     display: flex;
     background: var(--pane);
   }
+  /* 留白用绝对定位实现，不放在容器的 padding 上：FitAddon 按父容器的高度计算行数，
+     border-box 下 padding 会被算进可用高度，导致多算一行、最后一行被切掉 */
   .term {
-    flex: 1;
-    min-width: 0;
-    padding: 12px 6px 6px 14px;
+    position: absolute;
+    top: 12px;
+    right: 6px;
+    bottom: 6px;
+    left: 14px;
   }
   .term :global(.xterm) {
     height: 100%;
@@ -358,6 +362,8 @@
   .overlay {
     position: absolute;
     inset: 0;
+    /* xterm.js 的无障碍层与滚动条 z-index 为 10–11 且铺满终端，必须高于它们，否则点击和键盘焦点会被截走 */
+    z-index: 50;
     display: grid;
     place-items: center;
     background: color-mix(in srgb, var(--pane) 70%, transparent);
