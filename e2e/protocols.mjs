@@ -216,7 +216,8 @@ try {
     if ((await pw.getAttribute('value')) !== env('SSH_PASS')) await setValue(pw, env('SSH_PASS'));
     await pw.sendKeys(Key.ENTER);
     await find(By.xpath('//footer[contains(., "已连接")]'), 45000);
-    await waitText(key, (t) => /\$\s*$/m.test(t.slice(t.indexOf('已连接'))), 'shell 提示符', 45000);
+    // mosh 会整屏重绘（清掉之前的提示行），这个终端只属于 Mosh 会话，直接找行尾的提示符
+    await waitText(key, (t) => /\$\s*$/m.test(t), 'shell 提示符', 45000);
     await shot('mosh-connected');
     await keyboard('e2e-mosh', 'printf mo-; seq 42 42');
     await waitText(key, 'mo-42', 'mo-42');
