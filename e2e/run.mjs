@@ -120,6 +120,12 @@ try {
     await pw.sendKeys(env('SSH_PASS'), Key.ENTER);
     await find(By.xpath('//footer[contains(., "已连接")]'), 30000);
     await waitTerminal('SHA256:');
+    // 终端的最后一行必须完整显示在容器内（不能被底边切掉）
+    const overflow = await driver.executeScript(`
+      const screen = document.querySelector('div[role="application"] .xterm-screen');
+      const box = screen.closest('.xterm').parentElement.getBoundingClientRect();
+      return screen.getBoundingClientRect().bottom - box.bottom;`);
+    if (overflow > 1) throw new Error(`终端超出容器 ${overflow}px，最后一行会被切掉`);
     await shot('ssh-connected');
   });
 
