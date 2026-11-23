@@ -4,8 +4,11 @@ mod state;
 use std::collections::HashMap;
 use std::path::Path;
 
+#[cfg(desktop)]
 use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
-use tauri::{Emitter, Manager};
+#[cfg(desktop)]
+use tauri::Emitter;
+use tauri::Manager;
 use tokio::sync::Mutex;
 use vornel_vault::{SystemKeyStore, Vault};
 
@@ -25,6 +28,8 @@ fn migrate_hosts_json(dir: &Path, vault: &mut Vault) {
     }
 }
 
+/// 桌面端菜单（iOS 没有菜单栏）。
+#[cfg(desktop)]
 fn build_menu(app: &tauri::App) -> tauri::Result<()> {
     // macOS 默认菜单的 ⌘W 会关闭整个窗口；这里换成“关闭标签”，交给前端处理
     let close_tab = MenuItemBuilder::with_id("close-tab", "关闭标签")
