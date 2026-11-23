@@ -5,9 +5,17 @@ name: Updater E2E
 # 再用 tauri-driver 驱动旧版：
 #   - 正向：发现新版本 → 更新并重启 → 磁盘上的 AppImage 变成新版本，重新启动后显示新版本、不再提示更新
 #   - 反向：清单里的签名换成另一把临时密钥签的 / 更新包被篡改 → 界面报错，AppImage 不变
+# 要编两个版本的 AppImage，耗时较长：只在更新相关代码变化时运行
 on:
   push:
-    branches: ['**']
+    branches: [develop]
+    paths:
+      - 'apps/vornel/src/lib/updater.svelte.ts'
+      - 'apps/vornel/src-tauri/tauri.conf.json'
+      - 'apps/vornel/src-tauri/Cargo.toml'
+      - 'apps/vornel/src-tauri/capabilities/**'
+      - 'e2e/updater.mjs'
+      - '.github/workflows/updater-e2e.yml'
   workflow_dispatch:
 
 concurrency:
