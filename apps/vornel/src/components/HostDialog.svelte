@@ -41,6 +41,8 @@
     const wasDefault = draft.port === PROTOCOL_PORTS[draft.protocol];
     draft.protocol = p;
     if (wasDefault || !draft.port) draft.port = PROTOCOL_PORTS[p];
+    // VNC / 串口不使用用户名，别把 SSH 的默认用户名 root 带过去
+    if ((p === 'vnc' || p === 'serial') && draft.username === 'root') draft.username = '';
     if (p === 'serial' && !draft.serial) {
       draft.serial = { baudRate: 115200, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none' };
     }

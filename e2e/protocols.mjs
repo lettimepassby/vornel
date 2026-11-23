@@ -203,6 +203,9 @@ try {
       throw new Error(`VNC 画面不是预期的 #3366cc 桌面：${JSON.stringify(stats)}`);
     }
     console.log(`  画面 ${stats.w}×${stats.h}，${stats.blue}/${stats.n} 个采样点为桌面底色`);
+    // VNC 不用用户名，状态栏不应显示 SSH 默认的 root@
+    const footer = await (await find(By.css('footer'))).getText();
+    if (footer.includes('root@')) throw new Error(`VNC 状态栏显示了无关的用户名：${footer}`);
     await sleep(1000);
     await shot('vnc');
   });
@@ -262,6 +265,9 @@ try {
       }
     }
     await click(By.css('dialog button[aria-label="关闭"]'));
+    // 关闭设置后侧栏应反映同步已开启（而不是一直显示“同步未开启”）
+    await find(By.xpath('//aside//button[contains(@class, "sync-btn")][contains(., "已同步")]'), 30000);
+    await shot('sync-sidebar');
   });
 } finally {
   await driver.quit().catch(() => {});
