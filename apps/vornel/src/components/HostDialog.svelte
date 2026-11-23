@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { errorText, type Host } from '../lib/api';
   import Dialog from './Dialog.svelte';
 
@@ -18,9 +19,9 @@
     onclose: () => void;
   } = $props();
 
-  // 编辑副本，保存前不影响列表
-  let draft = $state<Host>(structuredClone($state.snapshot(host)) as Host);
-  let keyPath = $state(host.auth.type === 'keyFile' ? host.auth.path : '~/.ssh/id_ed25519');
+  // 编辑副本：只在打开对话框时取一次初始值，保存前不影响列表
+  let draft = $state<Host>(untrack(() => $state.snapshot(host)) as Host);
+  let keyPath = $state(untrack(() => (host.auth.type === 'keyFile' ? host.auth.path : '~/.ssh/id_ed25519')));
   let error = $state('');
   let busy = $state(false);
   let confirmDelete = $state(false);

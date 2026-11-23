@@ -19,5 +19,7 @@ export default defineConfig({
     // macOS 12+ / iOS 15+ 的 WKWebView、Windows 的 WebView2 都支持
     target: ['safari15', 'chrome110'],
     assetsInlineLimit: 0,
+    // 桌面应用从本地加载，xterm.js 打成一个较大的包没有问题
+    chunkSizeWarningLimit: 1200,
   },
 });
