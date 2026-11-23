@@ -1,6 +1,6 @@
 name: E2E
 
-# 在一台运行器上启动真实服务（sshd、xrdp、x11vnc、telnetd、虚拟串口、MinIO、WebDAV），
+# 在一台运行器上启动真实服务（sshd、xrdp、x11vnc、telnetd、虚拟串口、S3、WebDAV），
 # 先跑各协议 / 同步后端的集成测试，再用 tauri-driver 驱动真实编译的 Vornel 做界面端到端测试。
 on:
   push:
@@ -73,16 +73,14 @@ jobs:
           sudo systemctl restart inetd || sudo systemctl restart openbsd-inetd
           # 虚拟串口对
           socat pty,raw,echo=0,link=/tmp/vornel-s0 pty,raw,echo=0,link=/tmp/vornel-s1 >/dev/null 2>&1 &
-          # S3（MinIO 官方二进制，不依赖容器镜像仓库）；失败不阻止后续服务启动
+          # S3 + WebDAV：MinIO 已停止提供社区版二进制（dl.min.io 返回 410），容器镜像也拉不到，
+          # 改用官方发布的新版 rclone（apt 里的版本没有 serve s3）。各服务失败互不影响，最后统一检查端口。
           (
-            curl -fsSL --retry 5 -o $T/minio https://dl.min.io/server/minio/release/linux-amd64/minio &&
-            chmod +x $T/minio && mkdir -p $T/minio-data || exit 1
-            MINIO_ROOT_USER=vornel MINIO_ROOT_PASSWORD=vornel-secret-1 nohup $T/minio server $T/minio-data --address 127.0.0.1:9000 >$T/minio.log 2>&1 &
-            for i in $(seq 60); do curl -sf http://127.0.0.1:9000/minio/health/live && break; sleep 1; done
-            AWS_ACCESS_KEY_ID=vornel AWS_SECRET_ACCESS_KEY=vornel-secret-1 aws --endpoint-url http://127.0.0.1:9000 --region us-east-1 s3 mb s3://vornel-test
-          ) || echo "::warning::MinIO 启动失败"
-          # WebDAV（rclone）
-          mkdir -p $T/dav
+            curl -fsSL --retry 5 -o $T/rclone.zip https://downloads.rclone.org/v1.71.2/rclone-v1.71.2-linux-amd64.zip &&
+            unzip -q -o $T/rclone.zip -d $T && install -m 755 $T/rclone-v1.71.2-linux-amd64/rclone $T/rclone-new
+          ) || echo "::warning::下载新版 rclone 失败"
+          mkdir -p $T/s3/vornel-test $T/dav
+          nohup $T/rclone-new serve s3 $T/s3 --addr 127.0.0.1:9000 --auth-key vornel,vornel-secret-1 >$T/s3.log 2>&1 &
           nohup rclone serve webdav $T/dav --addr 127.0.0.1:8081 --user dav --pass dav-pass-1 >$T/rclone.log 2>&1 &
           # 检查所有服务端口都在监听
           missing=""
@@ -120,7 +118,7 @@ jobs:
           VORNEL_TEST_SERIAL_B: /tmp/vornel-s1
         run: cargo test -p vornel-term --test real -- --ignored --nocapture --test-threads=1
 
-      - name: 集成测试：同步到 S3（MinIO）/ WebDAV（rclone）
+      - name: 集成测试：同步到 S3（rclone serve s3）/ WebDAV（rclone）
         if: always()
         env:
           VORNEL_TEST_S3_ENDPOINT: http://127.0.0.1:9000
@@ -175,6 +173,6 @@ jobs:
         if: failure()
         run: |
           T=$RUNNER_TEMP
-          for f in $T/sshd/log $T/x11vnc.log $T/minio.log $T/rclone.log $T/tauri-driver.log /var/log/xrdp.log /var/log/xrdp-sesman.log; do
+          for f in $T/sshd/log $T/x11vnc.log $T/s3.log $T/rclone.log $T/tauri-driver.log /var/log/xrdp.log /var/log/xrdp-sesman.log; do
             echo "===== $f"; sudo tail -40 "$f" 2>/dev/null || true
           done
