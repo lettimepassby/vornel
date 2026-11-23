@@ -41,6 +41,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: crates
+          # 只在 develop 上保存缓存，避免超过仓库 10 GB 上限后把打包用的缓存挤掉
+          save-if: ${{ github.ref == 'refs/heads/develop' }}
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --exclude vornel --all-targets
       - run: cargo test --workspace --exclude vornel
@@ -98,6 +100,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: app
+          # 只在 develop 上保存缓存，避免超过仓库 10 GB 上限后把打包用的缓存挤掉
+          save-if: ${{ github.ref == 'refs/heads/develop' }}
 
       - uses: actions/setup-node@v5
         with:
