@@ -50,7 +50,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM0RkJGNTI3NTI2OTE1MkYKUldRdkZXbFNKL1g3eENyenNaY1dhTDFIKzh0clhCOE03WEVKQmE1NVZ6VTRsWW5NdDRaWGFDUXcK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZDNTkwQjA0OENGRUVDQTAKUldTZzdQNk1CQXRaYkR4MURGOElMODNGbHE5SWUwcURveDB3ZzJscHdGSlFtZVJVbFZudGR5WEcK",
       "endpoints": [
         "https://github.com/lettimepassby/vornel/releases/latest/download/latest.json"
       ]
