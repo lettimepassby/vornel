@@ -5,7 +5,9 @@
 //! - iOS：没有系统 Agent
 
 use russh::client::Handle;
-use russh::keys::agent::client::{AgentClient, AgentStream};
+#[cfg(any(all(unix, not(target_os = "ios")), windows))]
+use russh::keys::agent::client::AgentClient;
+use russh::keys::agent::client::AgentStream;
 use russh::ChannelStream;
 
 use crate::client::Handler;
@@ -14,6 +16,7 @@ use crate::SshError;
 #[cfg(windows)]
 const PIPE: &str = r"\\.\pipe\openssh-ssh-agent";
 
+#[cfg(any(all(unix, not(target_os = "ios")), windows))]
 async fn try_identities<S>(
     handle: &mut Handle<Handler>,
     user: &str,

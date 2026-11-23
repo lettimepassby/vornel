@@ -40,6 +40,7 @@ fn poisoned() -> VaultError {
 
 /// 系统钥匙串 + 文件回退。
 pub struct SystemKeyStore {
+    #[cfg_attr(any(target_os = "ios", target_os = "android"), allow(dead_code))]
     service: String,
     fallback: PathBuf,
 }
