@@ -46,6 +46,29 @@ jobs:
         working-directory: apps/vornel
         run: npx tauri ios build --target aarch64-sim --debug --no-sign --ci
 
+      - name: 在 iOS 模拟器中启动并截图
+        working-directory: apps/vornel
+        run: |
+          set -euo pipefail
+          APP=$(find src-tauri/gen/apple/build -name 'Vornel.app' -type d | head -1)
+          echo "App: $APP"
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone')))")
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl launch "$UDID" com.lettimepassby.vornel
+          sleep 25
+          mkdir -p $RUNNER_TEMP/ios-shots
+          xcrun simctl io "$UDID" screenshot $RUNNER_TEMP/ios-shots/launch.png
+          # 应用进程仍在运行（没有闪退）
+          xcrun simctl spawn "$UDID" launchctl list | grep -i vornel
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator-screenshot
+          path: ${{ runner.temp }}/ios-shots/
+          retention-days: 14
+
       - name: 构建 IPA（签名）
         if: env.HAS_IOS_CERT == 'true'
         working-directory: apps/vornel
