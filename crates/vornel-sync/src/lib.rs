@@ -343,6 +343,28 @@ pub async fn sync(
     Ok(report)
 }
 
+/// 修改主密码：用新密码重新包装同一把数据密钥并覆盖云端 vault.json。
+///
+/// 数据本身不需要重新加密；已加入的其他设备继续使用同一把数据密钥，不受影响，
+/// 只有之后新加入的设备需要输入新密码。
+pub async fn change_password(op: &Operator, vault: &mut Vault, new_password: &str) -> Result<()> {
+    if new_password.chars().count() < 8 {
+        return Err(SyncError::Config("主密码至少 8 个字符".into()));
+    }
+    let local_id: Option<String> = vault.meta_get(META_KEY_ID)?;
+    let bytes = read_optional(op, VAULT_FILE)
+        .await?
+        .ok_or_else(|| SyncError::Config("云端还没有同步库，请先同步一次".into()))?;
+    let remote: WrappedKey = serde_json::from_slice(&bytes)?;
+    if local_id.as_deref() != Some(remote.key_id.as_str()) {
+        return Err(SyncError::NeedPassword { first_time: false });
+    }
+    let wrapped = vault.wrap_key(&remote.key_id, new_password)?;
+    op.write(VAULT_FILE, serde_json::to_vec_pretty(&wrapped)?)
+        .await?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -406,6 +428,18 @@ mod tests {
         sync(&op, &mut a, &keys_a, None).await.unwrap();
         sync(&op, &mut b, &keys_b, None).await.unwrap();
         assert_eq!(b.list::<vornel_core::Snippet>().unwrap().len(), 1);
+
+        // 修改主密码：已加入的设备不受影响；新设备必须用新密码
+        change_password(&op, &mut a, "new-password").await.unwrap();
+        sync(&op, &mut b, &keys_b, None).await.unwrap();
+        let keys_c = MemoryKeyStore::default();
+        let mut c = Vault::open(&temp_dir().join("c.db"), &keys_c).unwrap();
+        assert!(sync(&op, &mut c, &keys_c, Some("pw")).await.is_err());
+        let r = sync(&op, &mut c, &keys_c, Some("new-password"))
+            .await
+            .unwrap();
+        assert!(r.joined);
+        assert_eq!(c.list::<vornel_core::Snippet>().unwrap().len(), 1);
 
         // 云端文件中不含明文
         let raw = std::fs::read(

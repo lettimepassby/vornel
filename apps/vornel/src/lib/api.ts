@@ -238,6 +238,7 @@ export const syncGetConfig = () => invoke<BackendConfig | null>('sync_get_config
 export const syncSetConfig = (config: BackendConfig | null) => invoke<void>('sync_set_config', { config });
 export const syncCheck = () => invoke<{ configured: boolean; needPassword: boolean | null }>('sync_check');
 export const syncNow = (password?: string) => invoke<SyncReport>('sync_now', { password: password ?? null });
+export const syncChangePassword = (newPassword: string) => invoke<void>('sync_change_password', { newPassword });
 export const syncOAuth = (provider: 'google' | 'microsoft' | 'dropbox', clientId: string, clientSecret: string) =>
   invoke<BackendConfig>('sync_oauth', { provider, clientId, clientSecret });
 

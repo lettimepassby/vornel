@@ -178,6 +178,24 @@
     }
   }
 
+  let newPw = $state('');
+  let newPw2 = $state('');
+  let pwMsg = $state('');
+  async function changePassword() {
+    pwMsg = '';
+    if (newPw !== newPw2) {
+      pwMsg = '两次输入的主密码不一致';
+      return;
+    }
+    try {
+      await api.syncChangePassword(newPw);
+      newPw = newPw2 = '';
+      pwMsg = '已修改。已加入的设备不受影响，之后新加入的设备请使用新密码。';
+    } catch (e) {
+      pwMsg = api.errorText(e);
+    }
+  }
+
   // ---------------------------------------------------------------- 安全
   let confirmReset = $state(false);
   async function resetVault() {
@@ -343,6 +361,19 @@
           <Icon name="refresh" size={14} />{syncBusy ? '同步中…' : '立即同步'}
         </button>
       </div>
+
+      {#if cfg && !needPw}
+        <div class="block">
+          <b>修改主密码</b>
+          <span class="sub">只会用新密码重新加密数据密钥，数据本身不变；已加入的设备不需要重新输入。</span>
+          <div class="row gap">
+            <input class="input grow" type="password" bind:value={newPw} placeholder="新主密码（至少 8 个字符）" />
+            <input class="input grow" type="password" bind:value={newPw2} placeholder="再输入一次" />
+            <button class="btn ghost" type="button" onclick={changePassword} disabled={!newPw}>修改</button>
+          </div>
+          {#if pwMsg}<p class="sub">{pwMsg}</p>{/if}
+        </div>
+      {/if}
     </section>
   {:else if tab === 'security'}
     <section>
