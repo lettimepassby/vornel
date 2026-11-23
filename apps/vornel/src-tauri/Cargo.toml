@@ -27,6 +27,9 @@ uuid.workspace = true
 reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "http2"] }
 sha2 = "0.11"
 vornel-core.workspace = true
+vornel-mosh.workspace = true
+vornel-remote.workspace = true
 vornel-ssh.workspace = true
 vornel-sync.workspace = true
+vornel-term.workspace = true
 vornel-vault.workspace = true

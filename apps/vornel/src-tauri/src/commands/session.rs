@@ -33,6 +33,7 @@ pub enum SessionEvent {
     Connected,
     Closed {
         exit_status: Option<u32>,
+        reason: Option<String>,
     },
 }
 
@@ -178,7 +179,19 @@ pub async fn session_open(
         .map(|h| h.protocol)
         .ok_or("主机不存在"))?;
     if protocol != Protocol::Ssh {
-        return Err("该协议的会话请使用对应的入口".into());
+        return open_other(
+            app,
+            &state,
+            host_id,
+            protocol,
+            password,
+            save_password,
+            cols,
+            rows,
+            on_data,
+            on_event,
+        )
+        .await;
     }
 
     let password = password.filter(|p| !p.is_empty());
@@ -235,13 +248,17 @@ pub async fn session_open(
                 let _ = data.send(InvokeResponseBody::Raw(bytes));
             },
             move |exit_status| {
-                let _ = exit_channel.send(SessionEvent::Closed { exit_status });
+                let _ = exit_channel.send(SessionEvent::Closed {
+                    exit_status,
+                    reason: None,
+                });
                 tauri::async_runtime::spawn(async move {
                     let state = exit_app.state::<AppState>();
                     let removed = state.sessions.lock().await.remove(&exit_id);
                     if let Some(s) = removed {
-                        let Session::Ssh { conn, .. } = &*s;
-                        conn.disconnect().await;
+                        if let Session::Ssh { conn, .. } = &*s {
+                            conn.disconnect().await;
+                        }
                     }
                 });
             },
@@ -261,6 +278,152 @@ pub async fn session_open(
     Ok(session_id)
 }
 
+/// Mosh、Telnet、串口会话。
+#[allow(clippy::too_many_arguments)]
+async fn open_other(
+    app: AppHandle,
+    state: &AppState,
+    host_id: Uuid,
+    protocol: Protocol,
+    password: Option<String>,
+    save_password: bool,
+    cols: u32,
+    rows: u32,
+    on_data: Channel,
+    on_event: Channel<SessionEvent>,
+) -> CmdResult<String> {
+    let session_id = Uuid::new_v4().to_string();
+    let data = on_data.clone();
+    let on_output = move |bytes: Vec<u8>| {
+        let _ = data.send(InvokeResponseBody::Raw(bytes));
+    };
+    let exit_channel = on_event.clone();
+    let exit_app = app.clone();
+    let exit_id = session_id.clone();
+    let on_exit = move |reason: Option<String>| {
+        let _ = exit_channel.send(SessionEvent::Closed {
+            exit_status: None,
+            reason,
+        });
+        tauri::async_runtime::spawn(async move {
+            exit_app
+                .state::<AppState>()
+                .sessions
+                .lock()
+                .await
+                .remove(&exit_id);
+        });
+    };
+
+    let host = with_vault!(state, |v| v
+        .get::<Host>(host_id)
+        .map_err(err)?
+        .ok_or("主机不存在"))?;
+    let (cols16, rows16) = (
+        cols.min(u16::MAX as u32) as u16,
+        rows.min(u16::MAX as u32) as u16,
+    );
+
+    let session = match protocol {
+        Protocol::Mosh => {
+            // 先用 SSH 登录并启动 mosh-server，再改走 UDP
+            let password = password.filter(|p| !p.is_empty());
+            let (conn, keys, host) = connect_host(state, host_id, password.clone(), None).await?;
+            for k in keys {
+                let _ = on_event.send(SessionEvent::HostKey {
+                    host: k.host,
+                    port: k.port,
+                    algorithm: k.algorithm,
+                    fingerprint: k.fingerprint,
+                    new: k.new,
+                });
+            }
+            if save_password {
+                if let Some(pw) = password {
+                    save_secret(state, &host, pw).await?;
+                }
+            }
+            let (out, _) = conn.exec(vornel_mosh::SERVER_COMMAND).await.map_err(err)?;
+            conn.disconnect().await;
+            let text = String::from_utf8_lossy(&out).into_owned();
+            let (port, key) = vornel_mosh::parse_connect(&text).ok_or_else(|| {
+                vornel_mosh::MoshError::NoConnectLine(text.trim().chars().take(200).collect())
+                    .to_string()
+            })?;
+            let addr = tokio::net::lookup_host((host.address.trim(), port))
+                .await
+                .map_err(err)?
+                .next()
+                .ok_or("无法解析主机地址")?;
+            Session::Mosh(
+                vornel_mosh::connect(addr, &key, cols16, rows16, on_output, on_exit)
+                    .await
+                    .map_err(err)?,
+            )
+        }
+        Protocol::Telnet => Session::Term(
+            vornel_term::telnet::connect(
+                host.address.trim(),
+                host.port,
+                cols16,
+                rows16,
+                on_output,
+                on_exit,
+            )
+            .await
+            .map_err(err)?,
+        ),
+        Protocol::Serial => {
+            let cfg = host.serial.clone().unwrap_or_default();
+            let opts = vornel_term::serial::SerialOptions {
+                path: host.address.trim().to_string(),
+                baud_rate: cfg.baud_rate,
+                data_bits: cfg.data_bits,
+                parity: cfg.parity,
+                stop_bits: cfg.stop_bits,
+                flow_control: cfg.flow_control,
+            };
+            Session::Term(vornel_term::serial::open(&opts, on_output, on_exit).map_err(err)?)
+        }
+        _ => return Err("该协议请在远程桌面中打开".into()),
+    };
+
+    state
+        .sessions
+        .lock()
+        .await
+        .insert(session_id.clone(), Arc::new(session));
+    let _ = on_event.send(SessionEvent::Connected);
+    Ok(session_id)
+}
+
+/// 保存主机密码到 Vault（是否同步跟随偏好设置）。
+pub(crate) async fn save_secret(state: &AppState, host: &Host, password: String) -> CmdResult<()> {
+    with_vault!(state, |v| {
+        let sync = v
+            .get::<vornel_core::Prefs>(Uuid::nil())
+            .map_err(err)?
+            .unwrap_or_default()
+            .sync_secrets;
+        v.put(&Secret {
+            id: host.id,
+            password,
+            sync,
+        })
+        .map_err(err)?;
+        v.put(&Host {
+            save_password: true,
+            ..host.clone()
+        })
+        .map_err(err)
+    })
+}
+
+#[tauri::command]
+pub async fn serial_ports() -> CmdResult<Vec<String>> {
+    Ok(vornel_term::serial::list_ports())
+}
+
 #[tauri::command]
 pub async fn session_write(
     state: State<'_, AppState>,
@@ -269,6 +432,14 @@ pub async fn session_write(
 ) -> CmdResult<()> {
     match &*state.session(&session_id).await? {
         Session::Ssh { shell, .. } => shell.write(data.into_bytes()).await.map_err(err),
+        Session::Mosh(m) => {
+            m.write(data.into_bytes());
+            Ok(())
+        }
+        Session::Term(t) => {
+            t.write(data.into_bytes());
+            Ok(())
+        }
     }
 }
 
@@ -281,6 +452,14 @@ pub async fn session_resize(
 ) -> CmdResult<()> {
     match &*state.session(&session_id).await? {
         Session::Ssh { shell, .. } => shell.resize(cols, rows).await.map_err(err),
+        Session::Mosh(m) => {
+            m.resize(cols as u16, rows as u16);
+            Ok(())
+        }
+        Session::Term(t) => {
+            t.resize(cols as u16, rows as u16);
+            Ok(())
+        }
     }
 }
 
@@ -296,6 +475,8 @@ pub async fn session_close(state: State<'_, AppState>, session_id: String) -> Cm
                 shell.close().await;
                 conn.disconnect().await;
             }
+            // Mosh / Telnet / 串口：丢弃会话即关闭连接
+            Session::Mosh(_) | Session::Term(_) => {}
         }
     }
     Ok(())
@@ -318,7 +499,9 @@ pub async fn host_key_trust(state: State<'_, AppState>, host: String, port: u16)
 
 async fn sftp_of(state: &AppState, session_id: &str) -> CmdResult<Arc<Sftp>> {
     let session = state.session(session_id).await?;
-    let Session::Ssh { conn, sftp, .. } = &*session;
+    let Session::Ssh { conn, sftp, .. } = &*session else {
+        return Err("该会话不支持 SFTP".into());
+    };
     let mut slot = sftp.lock().await;
     if let Some(s) = &*slot {
         return Ok(s.clone());

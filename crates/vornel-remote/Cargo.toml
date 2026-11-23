@@ -1,0 +1,30 @@
+[package]
+name = "vornel-remote"
+description = "Vornel 的远程桌面：RDP（IronRDP）与 VNC（vnc-rs），只推送变化的矩形区域"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license-file.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["net", "io-util"] }
+base64 = "0.23"
+sha2 = "0.11"
+
+ironrdp-connector = "0.12"
+ironrdp-graphics = "0.11"
+ironrdp-input = "0.9"
+ironrdp-pdu = "0.11"
+ironrdp-session = "0.13"
+ironrdp-tokio = "0.12"
+# TLS 用 ring（与项目其余部分一致），不引入 aws-lc-rs
+ironrdp-tls = { version = "0.3", features = ["rustls-ring"] }
+
+vnc-rs = "0.6"
+
+[dev-dependencies]
+serde_json.workspace = true

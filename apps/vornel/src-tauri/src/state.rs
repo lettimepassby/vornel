@@ -14,6 +14,9 @@ pub enum Session {
         shell: Shell,
         sftp: Mutex<Option<Arc<Sftp>>>,
     },
+    Mosh(vornel_mosh::MoshSession),
+    /// Telnet 或串口
+    Term(vornel_term::TermSession),
 }
 
 pub struct RunningForward {
@@ -29,6 +32,8 @@ pub struct AppState {
     pub keys: SystemKeyStore,
     pub sessions: Mutex<HashMap<String, Arc<Session>>>,
     pub forwards: Mutex<HashMap<Uuid, RunningForward>>,
+    /// RDP / VNC 会话
+    pub remotes: Mutex<HashMap<String, vornel_remote::RemoteSession>>,
 }
 
 impl AppState {

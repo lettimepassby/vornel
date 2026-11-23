@@ -108,6 +108,7 @@ pub fn run() {
                 keys,
                 sessions: Mutex::new(HashMap::new()),
                 forwards: Mutex::new(HashMap::new()),
+                remotes: Mutex::new(HashMap::new()),
             });
 
             #[cfg(desktop)]
@@ -145,6 +146,10 @@ pub fn run() {
             commands::sync::sync_now,
             commands::sync::sync_oauth,
             commands::fonts::font_addons,
+            commands::remote::remote_open,
+            commands::remote::remote_input,
+            commands::remote::remote_close,
+            commands::session::serial_ports,
             commands::fonts::font_addon_install,
             commands::fonts::font_addon_remove,
         ])

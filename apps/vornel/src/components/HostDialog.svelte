@@ -32,6 +32,10 @@
   const jumpCandidates = $derived(data.hosts.filter((h) => h.id !== draft.id && h.protocol === 'ssh'));
   const isSshLike = $derived(draft.protocol === 'ssh' || draft.protocol === 'mosh');
   const PROTOCOLS = Object.keys(PROTOCOL_LABELS) as Protocol[];
+  let ports = $state<string[]>([]);
+  $effect(() => {
+    if (draft.protocol === 'serial') void api.serialPorts().then((p) => (ports = p)).catch(() => {});
+  });
 
   function setProtocol(p: Protocol) {
     const wasDefault = draft.port === PROTOCOL_PORTS[draft.protocol];
@@ -110,8 +114,10 @@
           class="input mono"
           bind:value={draft.address}
           placeholder={draft.protocol === 'serial' ? '/dev/tty.usbserial-0001 或 COM3' : '10.0.1.21 或 example.com'}
+          list={draft.protocol === 'serial' ? 'vornel-ports' : undefined}
           required
         />
+        <datalist id="vornel-ports">{#each ports as p (p)}<option value={p}></option>{/each}</datalist>
       </label>
       {#if draft.protocol !== 'serial'}
         <label class="field"><span>端口</span><input class="input mono" type="number" min="1" max="65535" bind:value={draft.port} /></label>

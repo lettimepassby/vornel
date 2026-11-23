@@ -43,9 +43,11 @@ jobs:
       - name: 转换为 woff2 并计算 sha256
         run: |
           set -euo pipefail
-          for f in MapleMono-CN-Regular.ttf MapleMono-CN-Bold.ttf LXGWWenKaiScreen.ttf 'NotoSansSC[wght].ttf'; do
+          for f in MapleMono-CN-Regular.ttf MapleMono-CN-Bold.ttf LXGWWenKaiScreen.ttf; do
             python -m fontTools.ttLib.woff2 compress -o "out/${f%.ttf}.woff2" "src/$f"
           done
+          # 文件名里的方括号会被 gh 当成通配符，改用 -VF 后缀
+          python -m fontTools.ttLib.woff2 compress -o out/NotoSansSC-VF.woff2 'src/NotoSansSC[wght].ttf'
           cd out
           python - <<'PY'
           import hashlib, json, os

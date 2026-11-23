@@ -92,7 +92,8 @@
             setStatus({ state: 'connected' });
           } else {
             sessionId = null;
-            line('info', 'END', `连接已关闭${ev.exitStatus != null ? `（退出码 ${ev.exitStatus}）` : ''}`);
+            const detail = ev.reason ? `：${ev.reason}` : ev.exitStatus != null ? `（退出码 ${ev.exitStatus}）` : '';
+            line(ev.reason ? 'err' : 'info', 'END', `连接已关闭${detail}`);
             setStatus({ state: 'closed' });
           }
         },

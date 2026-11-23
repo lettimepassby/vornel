@@ -12,14 +12,14 @@
   let wrap = $state<HTMLDivElement>();
   let ctx: CanvasRenderingContext2D | null = null;
   let sessionId: string | null = null;
-  let state = $state<PaneStatus['state']>('connecting');
+  let phase = $state<PaneStatus['state']>('connecting');
   let message = $state('');
   let password = $state('');
   let savePassword = $state(false);
   let size = $state({ w: 0, h: 0 });
 
   function setState(s: PaneStatus['state'], msg = '') {
-    state = s;
+    phase = s;
     message = msg;
     onstatus({ state: s, message: msg, sessionId, cols: size.w || undefined, rows: size.h || undefined });
   }
@@ -110,7 +110,7 @@
   });
 
   $effect(() => {
-    if (active && state === 'connected') requestAnimationFrame(() => canvas?.focus());
+    if (active && phase === 'connected') requestAnimationFrame(() => canvas?.focus());
   });
 </script>
 
@@ -135,7 +135,7 @@
     oncontextmenu={(e) => e.preventDefault()}
   ></canvas>
 
-  {#if state !== 'connected'}
+  {#if phase !== 'connected'}
     <div class="overlay">
       <form
         class="card"
@@ -146,11 +146,11 @@
       >
         <div class="title">
           <span class="mono">{host.protocol.toUpperCase()} · {host.address}:{host.port}</span>
-          {#if state === 'connecting'}<span class="hint">正在连接…</span>{/if}
+          {#if phase === 'connecting'}<span class="hint">正在连接…</span>{/if}
         </div>
         {#if message}<p class="msg">{message}</p>{/if}
-        {#if state === 'auth' || state === 'error' || state === 'closed'}
-          {#if state === 'auth' || !host.savePassword}
+        {#if phase === 'auth' || phase === 'error' || phase === 'closed'}
+          {#if phase === 'auth' || !host.savePassword}
             <label class="field">
               <span>密码</span>
               <!-- svelte-ignore a11y_autofocus -->
@@ -158,7 +158,7 @@
             </label>
             <label class="check"><input type="checkbox" bind:checked={savePassword} />保存密码到 Vault（加密）</label>
           {/if}
-          <button class="btn" type="submit">{state === 'auth' ? '连接' : '重新连接'}</button>
+          <button class="btn" type="submit">{phase === 'auth' ? '连接' : '重新连接'}</button>
         {/if}
       </form>
     </div>

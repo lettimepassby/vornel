@@ -44,6 +44,11 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --exclude vornel --all-targets
       - run: cargo test --workspace --exclude vornel
+      - name: Mosh 端到端测试（连接真实的 mosh-server）
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mosh
+          cargo test -p vornel-mosh -- --ignored --nocapture
 
   app:
     name: Tauri 应用（检查）

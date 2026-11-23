@@ -55,7 +55,7 @@ pub const ADDONS: &[Addon] = &[
         family: "Noto Sans SC",
         role: "cjk",
         files: &[AddonFile {
-            name: "NotoSansSC[wght].woff2",
+            name: "NotoSansSC-VF.woff2",
             weight: "100 900",
             sha256: "NOTO_SHA256",
             size: 0,
@@ -144,7 +144,7 @@ pub async fn font_addon_install(
     let mut done = 0u64;
     let client = reqwest::Client::new();
     for f in addon.files {
-        let url = format!("{BASE}{}", f.name.replace('[', "%5B").replace(']', "%5D"));
+        let url = format!("{BASE}{}", f.name);
         let mut resp = client
             .get(&url)
             .send()
@@ -212,12 +212,12 @@ pub fn protocol<R: Runtime>(
         Some(bytes) => Response::builder()
             .header("Content-Type", "font/woff2")
             .header("Access-Control-Allow-Origin", "*")
-            .body(Cow::Owned(bytes))
-            .unwrap_or_else(|_| Response::new(Cow::Borrowed(&[]))),
+            .body(Cow::<'static, [u8]>::Owned(bytes))
+            .unwrap_or_else(|_| Response::new(Cow::Borrowed(&[][..]))),
         None => Response::builder()
             .status(StatusCode::NOT_FOUND)
             .body(Cow::Borrowed(&[][..]))
-            .unwrap_or_else(|_| Response::new(Cow::Borrowed(&[]))),
+            .unwrap_or_else(|_| Response::new(Cow::Borrowed(&[][..]))),
     }
 }
 

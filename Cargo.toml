@@ -15,6 +15,9 @@ vornel-core = { path = "crates/vornel-core" }
 vornel-ssh = { path = "crates/vornel-ssh" }
 vornel-vault = { path = "crates/vornel-vault" }
 vornel-sync = { path = "crates/vornel-sync" }
+vornel-term = { path = "crates/vornel-term" }
+vornel-mosh = { path = "crates/vornel-mosh" }
+vornel-remote = { path = "crates/vornel-remote" }
 
 tokio = { version = "1.54", features = ["rt-multi-thread", "macros", "sync", "time"] }
 serde = { version = "1", features = ["derive"] }

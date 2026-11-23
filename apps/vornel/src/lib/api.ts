@@ -123,7 +123,7 @@ export const keyImport = (name: string, pem: string, passphrase: string) =>
 export type SessionEvent =
   | { type: 'hostKey'; host: string; port: number; algorithm: string; fingerprint: string; new: boolean }
   | { type: 'connected' }
-  | { type: 'closed'; exitStatus: number | null };
+  | { type: 'closed'; exitStatus: number | null; reason: string | null };
 
 export interface OpenArgs {
   hostId: string;
@@ -163,6 +163,7 @@ export const sessionWrite = (sessionId: string, data: string) =>
 export const sessionResize = (sessionId: string, cols: number, rows: number) =>
   invoke<void>('session_resize', { sessionId, cols, rows });
 export const sessionClose = (sessionId: string) => invoke<void>('session_close', { sessionId });
+export const serialPorts = () => invoke<string[]>('serial_ports');
 export const hostKeyTrust = (host: string, port: number) => invoke<void>('host_key_trust', { host, port });
 
 // ---------------------------------------------------------------- SFTP
