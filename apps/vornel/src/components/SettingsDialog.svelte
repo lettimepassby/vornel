@@ -6,6 +6,7 @@
   import { ensureFamily, familyStack, FONT_PACKS } from '../lib/fonts';
   import { FONT_LICENSES, LIBRARIES } from '../lib/licenses';
   import { loadAll, prefs } from '../lib/store.svelte';
+  import { checkForUpdate, installUpdate, loadCurrentVersion, updater, updaterSupported } from '../lib/updater.svelte';
   import Dialog from './Dialog.svelte';
   import FontAddons from './FontAddons.svelte';
   import Icon from './Icon.svelte';
@@ -21,6 +22,10 @@
       void ensureFamily(p.ui);
       void ensureFamily(p.terminal);
     }
+  });
+
+  $effect(() => {
+    void loadCurrentVersion();
   });
 
   function setSize(delta: number) {
@@ -391,8 +396,34 @@
     </section>
   {:else}
     <section>
+      <div class="block">
+        <div class="row">
+          <span><b>Vornel {updater.current}</b></span>
+          {#if updaterSupported}
+            <button class="btn ghost" type="button" onclick={() => checkForUpdate()} disabled={updater.checking || updater.downloading}>
+              {updater.checking ? '正在检查…' : '检查更新'}
+            </button>
+          {/if}
+        </div>
+        {#if updaterSupported}
+          {#if updater.update}
+            <div class="pw">
+              <div class="row">
+                <span><b>发现新版本 {updater.update.version}</b></span>
+                <button class="btn" type="button" onclick={installUpdate} disabled={updater.downloading}>
+                  {updater.downloading ? `正在下载${updater.progress === null ? '…' : `（${updater.progress}%）`}` : '更新并重启'}
+                </button>
+              </div>
+              {#if updater.update.body}<pre class="notes">{updater.update.body}</pre>{/if}
+            </div>
+          {:else if updater.checked && !updater.checking && !updater.error}
+            <p class="ok">已是最新版本。</p>
+          {/if}
+          {#if updater.error}<p class="sub err">{updater.error}</p>{/if}
+        {/if}
+      </div>
       <p class="sub">
-        Vornel 0.1 · 源码以 PolyForm Noncommercial 1.0.0 许可公开，禁止商业使用。<br />
+        源码以 PolyForm Noncommercial 1.0.0 许可公开，禁止商业使用。<br />
         Copyright © 2026 lettimepassby · github.com/lettimepassby/vornel
       </p>
       <div class="block">
@@ -559,6 +590,18 @@
     border: 0;
     background: none;
     text-align: left;
+  }
+  .notes {
+    margin: 0;
+    max-height: 180px;
+    overflow: auto;
+    font: 12px/1.6 var(--f-ui);
+    white-space: pre-wrap;
+    color: var(--mut);
+    user-select: text;
+  }
+  .sub.err {
+    color: var(--err);
   }
   .lic {
     margin: 0;
