@@ -70,11 +70,15 @@ jobs:
           AllowTcpForwarding yes
           Subsystem sftp internal-sftp
           StrictModes no
+          LogLevel DEBUG2
           CFG
+          # 运行器账号的密码处于锁定状态；在 UsePAM no 时 sshd 会拒绝锁定账号的公钥登录
+          sudo usermod -p '*' "$(whoami)"
+          chmod 755 "$HOME"
           sudo mkdir -p /run/sshd
-          sudo /usr/sbin/sshd -f $D/sshd_config
+          sudo /usr/sbin/sshd -f $D/sshd_config -E $D/sshd.log
           export VORNEL_TEST_SSH_PORT=2222 VORNEL_TEST_SSH_USER=$(whoami) VORNEL_TEST_SSH_KEY=$D/client_key
-          cargo test -p vornel-ssh --test sshd -- --ignored --nocapture --test-threads=1
+          cargo test -p vornel-ssh --test sshd -- --ignored --nocapture --test-threads=1 || { echo "----- sshd.log -----"; sudo cat $D/sshd.log | tail -80; exit 1; }
 
   app:
     name: Tauri 应用（检查）
