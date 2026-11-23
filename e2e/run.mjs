@@ -115,8 +115,9 @@ try {
   await check('输入密码连接真实 sshd', async () => {
     await click(By.xpath('//aside//button[contains(., "e2e-ssh")]'));
     // 在密码框里按回车提交（用户最常见的操作）
-    const pw = await type(By.xpath('//div[@role="application"]//input[@type="password"]'), env('SSH_PASS'));
-    await pw.sendKeys(Key.ENTER);
+    // 先用鼠标点击密码框（会被遮挡时这里会报 ElementClickIntercepted），再用键盘输入
+    const pw = await click(By.xpath('//div[@role="application"]//input[@type="password"]'));
+    await pw.sendKeys(env('SSH_PASS'), Key.ENTER);
     await find(By.xpath('//footer[contains(., "已连接")]'), 30000);
     await waitTerminal('SHA256:');
     await shot('ssh-connected');

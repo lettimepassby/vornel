@@ -358,6 +358,8 @@
   .overlay {
     position: absolute;
     inset: 0;
+    /* xterm.js 的无障碍层与滚动条 z-index 为 10–11 且铺满终端，必须高于它们，否则点击和键盘焦点会被截走 */
+    z-index: 50;
     display: grid;
     place-items: center;
     background: color-mix(in srgb, var(--pane) 70%, transparent);
