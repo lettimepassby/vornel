@@ -104,3 +104,21 @@ pub async fn sync_oauth(
     with_vault!(state, |v| v.meta_set(META_CONFIG, &cfg).map_err(err))?;
     Ok(cfg)
 }
+
+/// 修改主密码（只重新包装数据密钥）。
+#[tauri::command]
+pub async fn sync_change_password(
+    state: State<'_, AppState>,
+    new_password: String,
+) -> CmdResult<()> {
+    let mut guard = state.vault.lock().await;
+    let v = guard.as_mut().ok_or("Vault 未打开")?;
+    let cfg: BackendConfig = v
+        .meta_get(META_CONFIG)
+        .map_err(err)?
+        .ok_or("还没有设置同步后端")?;
+    let op = cfg.operator().map_err(err)?;
+    vornel_sync::change_password(&op, v, &new_password)
+        .await
+        .map_err(err)
+}

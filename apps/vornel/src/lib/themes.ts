@@ -53,12 +53,14 @@ export const TERMINAL_THEMES: Record<ThemeId, ITheme> = {
 };
 
 /** 终端里由应用写入的内联徽标（SSH / KEY / FWD / ERR），见 DESIGN.md 第 6 节。 */
-const BADGE_RGB: Record<ThemeId, Record<'ssh' | 'key' | 'err' | 'info', [number, number, number]>> = {
-  ink: { ssh: [142, 162, 255], key: [158, 206, 106], err: [247, 118, 142], info: [154, 154, 163] },
-  paper: { ssh: [67, 83, 209], key: [63, 125, 32], err: [194, 51, 77], info: [98, 95, 89] },
+const BADGE_RGB: Record<ThemeId, Record<BadgeKind, [number, number, number]>> = {
+  ink: { ssh: [142, 162, 255], key: [158, 206, 106], fwd: [224, 175, 104], err: [247, 118, 142], info: [154, 154, 163] },
+  paper: { ssh: [67, 83, 209], key: [63, 125, 32], fwd: [154, 103, 0], err: [194, 51, 77], info: [98, 95, 89] },
 };
 
-export function badge(theme: ThemeId, kind: 'ssh' | 'key' | 'err' | 'info', label: string, text: string): string {
+export type BadgeKind = 'ssh' | 'key' | 'fwd' | 'err' | 'info';
+
+export function badge(theme: ThemeId, kind: BadgeKind, label: string, text: string): string {
   const [r, g, b] = BADGE_RGB[theme][kind];
   const bg = TERMINAL_THEMES[theme].background as string;
   const [br, bgG, bb] = [1, 3, 5].map((i) => parseInt(bg.slice(i, i + 2), 16));

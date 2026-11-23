@@ -17,8 +17,8 @@
   import * as api from '../lib/api';
   import type { Host } from '../lib/api';
   import { ensureFamily, familyStack, findPack } from '../lib/fonts';
-  import { prefs } from '../lib/store.svelte';
-  import { badge, TERMINAL_THEMES } from '../lib/themes';
+  import { data, prefs } from '../lib/store.svelte';
+  import { badge, TERMINAL_THEMES, type BadgeKind } from '../lib/themes';
 
   let {
     host,
@@ -73,7 +73,7 @@
     return `${host.username ? host.username + '@' : ''}${host.address}:${host.port}`;
   }
 
-  function line(kind: 'ssh' | 'key' | 'err' | 'info', label: string, text: string) {
+  function line(kind: BadgeKind, label: string, text: string) {
     term?.write(badge(prefs.theme, kind, label, text));
   }
 
@@ -103,6 +103,18 @@
             if (ev.new) onhostkey?.();
           } else if (ev.type === 'connected') {
             line('ssh', host.protocol.toUpperCase().slice(0, 4), `已连接 ${target()}`);
+            // 经由这台主机正在运行的端口转发
+            for (const f of data.forwards) {
+              if (f.hostId !== host.id || !data.runningForwards.includes(f.id)) continue;
+              const bind = `${f.bindAddress}:${f.bindPort}`;
+              const text =
+                f.kind === 'dynamic'
+                  ? `SOCKS5 ${bind}`
+                  : f.kind === 'local'
+                    ? `${bind} → ${f.targetHost}:${f.targetPort}`
+                    : `远端 ${bind} → 本机 ${f.targetHost}:${f.targetPort}`;
+              line('fwd', 'FWD', `${f.name}  ${text}`);
+            }
             setStatus({ state: 'connected' });
           } else {
             sessionId = null;

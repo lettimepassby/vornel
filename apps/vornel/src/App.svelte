@@ -40,6 +40,8 @@
   /** 移动布局下是否正在看某个会话（否则显示主机列表等页面） */
   let showSession = $state(false);
   let ctrlOn = $state(false);
+  /** 偏好里用到、但本机还没下载的中文增强包 */
+  let missingAddons = $state<string[]>([]);
   const MOBILE_TABS: { id: View | 'settings'; label: string; icon: 'host' | 'key' | 'code' | 'forward' | 'settings' }[] = [
     { id: 'hosts', label: '主机', icon: 'host' },
     { id: 'keys', label: '密钥串', icon: 'key' },
@@ -77,7 +79,11 @@
   $effect(() => {
     void (async () => {
       await loadAll();
-      await listAddons().catch(() => []);
+      const addons = await listAddons().catch(() => []);
+      // 新设备同步了偏好，但还没下载增强包：先用系统字体，并提示下载（ARCHITECTURE.md 8.3）
+      missingAddons = addons
+        .filter((a) => !a.installed && Object.values(prefs.fontOverrides).includes(a.family))
+        .map((a) => a.family);
       await refreshSync(true);
     })();
     const unlisten = listen<string>('menu', (e) => {
@@ -296,6 +302,13 @@
       </div>
       {/if}
 
+      {#if missingAddons.length}
+        <div class="notice" role="status">
+          <span>此设备还没有字体增强包「{missingAddons.join('」「')}」，暂时使用系统字体。</span>
+          <button class="btn ghost" type="button" onclick={() => (settingsTab = 'appearance')}>去下载</button>
+          <button class="icon-btn" type="button" aria-label="关闭提示" onclick={() => (missingAddons = [])}><Icon name="close" size={14} /></button>
+        </div>
+      {/if}
       <div class="stage" class:focus={view === 'hosts' && !!activeTab}>
         {#each tabs as t (t.key)}
           <div class="ws" class:hidden={view !== 'hosts' || t.key !== activeKey || (mobile && !showSession)}>
@@ -538,6 +551,23 @@
     border: 1px solid var(--line2);
     margin-right: 4px;
   }
+  .notice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 6px 6px 0;
+    padding: 6px 6px 6px 12px;
+    border-radius: 8px;
+    background: var(--accbg);
+    font-size: 12.5px;
+  }
+  .notice span {
+    flex: 1;
+  }
+  .notice .btn {
+    height: 26px;
+  }
+
   /* ---------------- 移动布局 ---------------- */
   .app.mobile main {
     padding-top: env(safe-area-inset-top, 0px);
