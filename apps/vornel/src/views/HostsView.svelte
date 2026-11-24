@@ -14,6 +14,7 @@
     connected,
     onconnect,
     onedit,
+    onduplicate,
     onnew,
     onquick,
     searchInput = $bindable(),
@@ -22,6 +23,8 @@
     connected: Set<string>;
     onconnect: (h: Host) => void;
     onedit: (h: Host) => void;
+    /** 以这台主机为模板新建（复制一份） */
+    onduplicate: (h: Host) => void;
     onnew: (group: string | null) => void;
     /** 快速连接：`ssh user@host -p 22` / `user@host:port` */
     onquick: (target: { username: string; address: string; port: number }) => void;
@@ -139,7 +142,9 @@
                 <span class="gt"><GroupTile style={prefs.groupStyles?.[g]} /></span>
                 <span class="txt"><b>{g}</b><small>{n} 台主机</small></span>
               </button>
-              <button class="edit icon-btn" type="button" aria-label="设置分组 {g} 的外观" onclick={() => (editingGroup = g)}><Icon name="edit" size={14} /></button>
+              <div class="acts">
+                <button class="icon-btn" type="button" aria-label="设置分组 {g} 的外观" title="分组外观" onclick={() => (editingGroup = g)}><Icon name="edit" size={14} /></button>
+              </div>
             </div>
           {/each}
         </div>
@@ -175,7 +180,10 @@
                   <small class="mono">{h.protocol}{h.username ? `, ${h.username}` : ''}</small>
                 </span>
               </button>
-              <button class="edit icon-btn" type="button" aria-label="编辑 {h.name}" onclick={() => onedit(h)}><Icon name="edit" size={14} /></button>
+              <div class="acts">
+                <button class="icon-btn" type="button" aria-label="复制 {h.name}" title="复制一份" onclick={() => onduplicate(h)}><Icon name="copy" size={14} /></button>
+                <button class="icon-btn" type="button" aria-label="编辑 {h.name}" title="编辑" onclick={() => onedit(h)}><Icon name="edit" size={14} /></button>
+              </div>
             </div>
           {/each}
         </div>
@@ -274,7 +282,8 @@
   }
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    /* 260px：常见窗口宽度下一行 4 张，主机名约 21 个字符内能完整显示 */
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 10px;
   }
   .cell {
@@ -367,17 +376,30 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .edit {
+  /* 悬停时才浮出的操作按钮：平时不占位置，名字可以用满整张卡片 */
+  .acts {
     position: absolute;
-    right: 8px;
-    top: 50%;
-    translate: 0 -50%;
+    top: 1px;
+    right: 1px;
+    bottom: 1px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 8px 0 28px;
+    border-radius: 0 10px 10px 0;
+    background: linear-gradient(to right, transparent, var(--raise) 24px);
     opacity: 0;
-    transition: opacity 120ms ease-out;
+    translate: 6px 0;
+    pointer-events: none;
+    transition:
+      opacity 140ms ease-out,
+      translate 140ms ease-out;
   }
-  .cell:hover .edit,
-  .edit:focus-visible {
+  .cell:hover .acts,
+  .acts:focus-within {
     opacity: 1;
+    translate: 0 0;
+    pointer-events: auto;
   }
   .none {
     color: var(--mut);

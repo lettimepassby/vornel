@@ -286,7 +286,8 @@ try {
   });
   await check('分组外观：选系统 logo 和底色、改名', async () => {
     await click(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'));
-    const edit = await find(By.css('section[aria-label="主机列表"] button[aria-label="设置分组 e2e-group 的外观"]'));
+    // 操作按钮只在悬停时显示：直接定位后用脚本点击
+    const edit = await driver.wait(until.elementLocated(By.css('section[aria-label="主机列表"] button[aria-label="设置分组 e2e-group 的外观"]')), 20000);
     await driver.executeScript('arguments[0].click()', edit);
     await find(By.xpath('//dialog//h2[contains(., "分组外观")]'));
     await click(By.css('dialog button[aria-label="Debian"]'));
@@ -305,6 +306,11 @@ try {
     const saved = await driver.executeScript('return JSON.parse(localStorage.getItem("vornel.prefs") || "{}").groupStyles?.["e2e-team"];');
     if (!saved || saved.icon !== 'os:debian') throw new Error(`偏好里没有保存分组外观：${JSON.stringify(saved)}`);
     await shot('group-styled');
+    // 主机名在卡片里完整显示（没有被省略号截断）
+    const cut = await driver.executeScript(`
+      return [...document.querySelectorAll('section[aria-label="主机列表"] .card .txt b')]
+        .filter((b) => b.scrollWidth > b.clientWidth + 1).map((b) => b.textContent);`);
+    if (cut.length) throw new Error(`主机名被截断：${cut.join('、')}`);
   });
 } finally {
   await driver.quit().catch(() => {});
