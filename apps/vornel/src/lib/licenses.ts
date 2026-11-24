@@ -50,6 +50,7 @@ export const LIBRARIES: { name: string; license: string; url: string }[] = [
   { name: 'RustCrypto（argon2、chacha20poly1305、aes、ocb3）', license: 'MIT / Apache-2.0', url: 'https://github.com/RustCrypto' },
   { name: 'keyring-rs', license: 'MIT / Apache-2.0', url: 'https://github.com/open-source-cooperative/keyring-rs' },
   { name: 'tokio', license: 'MIT', url: 'https://github.com/tokio-rs/tokio' },
+  { name: 'Lucide（设置齿轮图标）', license: 'ISC', url: 'https://github.com/lucide-icons/lucide' },
   { name: 'Simple Icons（主机列表中的系统 logo，商标归各自所有者）', license: 'CC0-1.0', url: 'https://github.com/simple-icons/simple-icons' },
   { name: 'rustls / ring', license: 'Apache-2.0 / ISC / MIT', url: 'https://github.com/rustls/rustls' },
   { name: 'Fontsource', license: 'MIT（打包脚本）', url: 'https://github.com/fontsource/fontsource' },
