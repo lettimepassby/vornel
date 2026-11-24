@@ -206,7 +206,7 @@ try {
     await driver.wait(async () => (await driver.findElements(By.css('div[role="tablist"] .tab'))).length === before + 1, 5000, '复制会话没有打开新标签');
     // 关掉复制出来的标签，回到原来的会话
     await driver.actions().contextClick(await find(By.css('div[role="tablist"] .tab.on'))).perform();
-    await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][normalize-space(.)="关闭" or starts-with(normalize-space(.), "关闭⌘") or starts-with(normalize-space(.), "关闭Ctrl")]'));
+    await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][.//span[contains(@class,"lb")][normalize-space(.)="关闭"]]'));
     await driver.wait(async () => (await driver.findElements(By.css('div[role="tablist"] .tab'))).length === before, 5000, '关闭标签失败');
   });
 
