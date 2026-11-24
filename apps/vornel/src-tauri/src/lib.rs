@@ -89,7 +89,21 @@ fn build_menu(app: &tauri::App) -> tauri::Result<()> {
 pub fn run() {
     vornel_sync::init_tls();
 
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    // 记住窗口大小、位置、最大化状态；下次启动（包括更新后重启）自动恢复。
+    // 必须在创建窗口之前注册（主窗口在 setup 之前就已创建）
+    #[cfg(desktop)]
+    let builder = builder.plugin(
+        tauri_plugin_window_state::Builder::default()
+            // 标题栏样式由应用自己决定（Windows 无边框），不随保存的状态恢复
+            .with_state_flags(
+                tauri_plugin_window_state::StateFlags::all()
+                    & !tauri_plugin_window_state::StateFlags::DECORATIONS
+                    & !tauri_plugin_window_state::StateFlags::VISIBLE,
+            )
+            .build(),
+    );
+    builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .register_uri_scheme_protocol("vornel-font", commands::fonts::protocol)
@@ -143,6 +157,7 @@ pub fn run() {
             commands::records::record_delete,
             commands::records::secret_get,
             commands::records::host_touch,
+            commands::session::session_stats,
             commands::keys::key_generate,
             commands::keys::key_import,
             commands::session::session_open,

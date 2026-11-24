@@ -743,3 +743,24 @@ pub async fn forward_stop(state: State<'_, AppState>, forward_id: Uuid) -> CmdRe
 pub async fn forward_running(state: State<'_, AppState>) -> CmdResult<Vec<Uuid>> {
     Ok(state.forwards.lock().await.keys().copied().collect())
 }
+
+/// 读取一次服务器资源（终端底部的资源栏用）。复用会话已有的 SSH 连接，只读取 /proc 与 df。
+/// 非 Linux 服务器返回 None，界面隐藏资源栏。
+#[tauri::command]
+pub async fn session_stats(
+    state: State<'_, AppState>,
+    session_id: String,
+) -> CmdResult<Option<vornel_core::ServerStats>> {
+    let session = state
+        .sessions
+        .lock()
+        .await
+        .get(&session_id)
+        .cloned()
+        .ok_or("会话不存在")?;
+    let Session::Ssh { conn, .. } = &*session else {
+        return Ok(None);
+    };
+    let (out, _) = conn.exec(vornel_core::STATS_COMMAND).await.map_err(err)?;
+    Ok(vornel_core::parse_stats(&String::from_utf8_lossy(&out)))
+}

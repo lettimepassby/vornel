@@ -432,3 +432,34 @@ textarea.input {
 .link:hover {
   text-decoration: underline;
 }
+
+/* 视图切换（View Transitions）：主机页 ↔ 终端、标签切换时交叉淡入 + 轻微缩放 */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+::view-transition-old(root) {
+  animation-name: vt-out;
+}
+::view-transition-new(root) {
+  animation-name: vt-in;
+}
+@keyframes vt-out {
+  to {
+    opacity: 0;
+    transform: scale(1.012);
+  }
+}
+@keyframes vt-in {
+  from {
+    opacity: 0;
+    transform: scale(0.988);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}

@@ -395,6 +395,9 @@ pub struct Prefs {
     pub cursor_style: String,
     #[serde(default = "default_true")]
     pub cursor_blink: bool,
+    /// SSH 终端底部显示服务器资源栏
+    #[serde(default = "default_true")]
+    pub show_stats: bool,
 }
 
 fn default_auto() -> String {
@@ -449,6 +452,7 @@ impl Default for Prefs {
             terminal_line_height: None,
             cursor_style: default_cursor(),
             cursor_blink: true,
+            show_stats: true,
         }
     }
 }

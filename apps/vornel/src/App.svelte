@@ -33,6 +33,7 @@
   import { mod, openMenu, type MenuItem } from './lib/contextmenu.svelte';
   import { copyText, readText } from './lib/clipboard';
   import { resetHostsView } from './lib/hostsview.svelte';
+  import { supportsViewTransition, vt } from './lib/vt';
 
   interface Tab {
     key: string;
@@ -75,6 +76,7 @@
   let showStyle = $state(false);
   type PaneApi = {
     send: (text: string) => void;
+    write: (data: string) => void;
     setCtrl: (on: boolean) => void;
     selection: () => string;
     paste: (text: string) => void;
@@ -131,6 +133,8 @@
     };
   });
 
+  if (!supportsViewTransition) document.documentElement.classList.add('no-vt');
+
   $effect(() => {
     document.documentElement.dataset.theme = prefs.theme;
     void applyFontPack(prefs.fontPack, { ...prefs.fontOverrides });
@@ -175,12 +179,75 @@
   }
 
   // ---------------------------------------------------------------- 标签
-  function openTab(host: Host) {
+  /** 新建一个会话标签（不切换过去），返回它的 key */
+  function addTab(host: Host) {
     const key = crypto.randomUUID();
     tabs.push({ key, host, status: { state: 'connecting' }, sftp: false });
-    activeKey = key;
-    view = 'hosts';
-    showSession = true;
+    return key;
+  }
+
+  function openTab(host: Host) {
+    const key = addTab(host);
+    vt(() => {
+      activeKey = key;
+      view = 'hosts';
+      showSession = true;
+    });
+  }
+
+  // ---------------------------------------------------------------- 分屏
+  type Layout = 'cols' | 'rows' | 'grid';
+  /** 分屏：一组同时显示的会话；broadcast 开启时键盘输入同步发到组内所有会话 */
+  let split = $state<{ keys: string[]; layout: Layout; broadcast: boolean } | null>(null);
+  /** 当前标签所在的分屏组（当前标签不在组里时不显示分屏） */
+  const splitKeys = $derived(split && activeKey && split.keys.includes(activeKey) ? split.keys : null);
+
+  function startSplit(layout: Layout) {
+    const cur = activeTab;
+    if (!cur || !activeKey) return;
+    const n = layout === 'grid' ? 4 : 2;
+    // 优先使用已经打开的其他终端标签，不够再复制当前主机
+    const others = tabs.filter((t) => t.key !== activeKey && isTerminal(t.host)).map((t) => t.key);
+    const keys = [activeKey, ...others].slice(0, n);
+    while (keys.length < n) keys.push(addTab(cur.host));
+    vt(() => (split = { keys, layout, broadcast: split?.broadcast ?? false }));
+  }
+
+  function endSplit() {
+    vt(() => (split = null));
+  }
+
+  /** 分屏中第 i 个窗格的位置（百分比，窗格之间留 4px 缝） */
+  function paneStyle(i: number, n: number, layout: Layout) {
+    const cols = layout === 'cols' ? n : layout === 'rows' ? 1 : 2;
+    const rows = Math.ceil(n / cols);
+    const c = i % cols;
+    const r = Math.floor(i / cols);
+    const w = 100 / cols;
+    const h = 100 / rows;
+    return `left: calc(${c * w}% + 3px); top: calc(${r * h}% + 3px); width: calc(${w}% - 6px); height: calc(${h}% - 6px);`;
+  }
+
+  /** 同步输入：把一个窗格的键盘输入发给分屏里的其他会话 */
+  function broadcast(from: string, data: string) {
+    if (!split?.broadcast || !split.keys.includes(from)) return;
+    for (const k of split.keys) if (k !== from) panes[k]?.write(data);
+  }
+
+  function splitMenu(e: MouseEvent) {
+    openMenu(e, [
+      { label: '左右两屏', icon: 'split', action: () => startSplit('cols') },
+      { label: '上下两屏', icon: 'split', action: () => startSplit('rows') },
+      { label: '四宫格', icon: 'group', action: () => startSplit('grid') },
+      'sep',
+      {
+        label: split?.broadcast ? '关闭同步输入' : '开启同步输入（输入发送到所有分屏）',
+        icon: 'send',
+        disabled: !splitKeys,
+        action: () => split && (split.broadcast = !split.broadcast),
+      },
+      { label: '退出分屏', icon: 'close', disabled: !split, action: endSplit },
+    ]);
   }
 
   /** 搜索框里输入 ssh user@host：保存为一台新主机（同地址同用户的已有主机直接复用）并连接 */
@@ -289,6 +356,10 @@
     if (i < 0) return;
     tabs.splice(i, 1);
     delete panes[key];
+    if (split) {
+      split.keys = split.keys.filter((k) => k !== key);
+      if (split.keys.length < 2) split = null;
+    }
     if (activeKey === key) activeKey = tabs[Math.min(i, tabs.length - 1)]?.key ?? null;
     if (!tabs.length) showSession = false;
   }
@@ -338,8 +409,10 @@
       prefs.terminalFontSize = 13;
     } else if (e.key === 'b' && !mobile && tabs.length) {
       e.preventDefault();
-      showSession = !showSession;
-      if (showSession) view = 'hosts';
+      vt(() => {
+        showSession = !showSession;
+        if (showSession) view = 'hosts';
+      });
     } else if (!macInset && e.key === 'n') {
       e.preventDefault();
       editing = { host: api.blankHost(), isNew: true };
@@ -382,7 +455,7 @@
 {:else}
   <div class="app" class:mobile>
     {#if !mobile && !immersive}
-    <div class="sbw" in:fly={{ x: -28, duration: 200, easing: cubicOut }}>
+    <div class="sbw" in:fly={{ x: supportsViewTransition ? 0 : -28, duration: supportsViewTransition ? 0 : 200, easing: cubicOut }}>
     <Sidebar
       {macInset}
       {view}
@@ -390,9 +463,11 @@
       {sync}
       onview={(v) => {
         // 已经在主机页时再点“主机”：清空搜索、回到全部主机
-        if (v === 'hosts' && view === 'hosts' && !showSession) resetHostsView();
-        view = v;
-        if (v === 'hosts') showSession = false;
+        if (v === 'hosts' && view === 'hosts' && !showSession) return resetHostsView();
+        vt(() => {
+          view = v;
+          if (v === 'hosts') showSession = false;
+        });
       }}
       onnew={() => (editing = { host: api.blankHost(), isNew: true })}
       onsettings={() => (settingsTab = 'appearance')}
@@ -425,17 +500,24 @@
       {#if !mobile}
       <div class="tb-wrap" class:immersive class:mac={immersive && macInset} data-tauri-drag-region>
         {#if immersive}
-          <button class="home-btn" type="button" title="回到主机列表 ⌘B" onclick={() => (showSession = false)}>
+          <button class="home-btn" type="button" title="回到主机列表 ⌘B" onclick={() => vt(() => (showSession = false))}>
             <Icon name="host" size={15} />主机
           </button>
         {/if}
         <TabBar
-          tabs={tabs.map((t) => ({ key: t.key, title: t.host.name, state: t.status.state }))}
+          tabs={tabs.map((t) => ({ key: t.key, title: t.host.name, state: t.status.state, split: !!split?.keys.includes(t.key) }))}
           activeKey={view === 'hosts' ? activeKey : null}
           onselect={(k) => {
-            activeKey = k;
-            view = 'hosts';
-            showSession = true;
+            if (k === activeKey && view === 'hosts' && showSession) return;
+            // 同一分屏组内切换焦点不需要整屏过渡
+            const sameSplit = !!splitKeys && splitKeys.includes(k) && showSession;
+            const go = () => {
+              activeKey = k;
+              view = 'hosts';
+              showSession = true;
+            };
+            if (sameSplit) go();
+            else vt(go);
           }}
           onclose={closeTab}
           oncontext={tabMenu}
@@ -464,6 +546,14 @@
                 onclick={() => activeTab && (activeTab.sftp = !activeTab.sftp)}
               >
                 <Icon name="folder" size={14} />SFTP
+              </button>
+            {/if}
+            {#if split?.broadcast && splitKeys}
+              <button class="btn bc-chip" type="button" title="点击关闭同步输入" onclick={() => split && (split.broadcast = false)}>同步输入中</button>
+            {/if}
+            {#if !mobile}
+              <button class="btn ghost" class:on={!!splitKeys} type="button" title="分屏" onclick={splitMenu}>
+                <Icon name="split" size={14} />分屏
               </button>
             {/if}
             <button class="btn ghost" class:on={showStyle} type="button" aria-pressed={showStyle} title="终端外观" onclick={() => (showStyle = !showStyle)}>
@@ -495,7 +585,16 @@
       {/if}
       <div class="stage" class:focus={view === 'hosts' && !!activeTab} class:immersive>
         {#each tabs as t (t.key)}
-          <div class="ws" class:hidden={view !== 'hosts' || t.key !== activeKey || !showSession}>
+          {@const si = splitKeys ? splitKeys.indexOf(t.key) : -1}
+          <div
+            class="ws"
+            class:hidden={view !== 'hosts' || !showSession || (si < 0 && t.key !== activeKey)}
+            class:split={si >= 0}
+            class:focus={si >= 0 && t.key === activeKey}
+            class:bc={si >= 0 && split?.broadcast}
+            style={si >= 0 && split ? paneStyle(si, splitKeys!.length, split.layout) : undefined}
+            onpointerdowncapture={() => si >= 0 && t.key !== activeKey && (activeKey = t.key)}
+          >
             <div class="term-area" oncontextmenu={(e) => isTerminal(t.host) && terminalMenu(e, t)}>
               {#if isTerminal(t.host)}
                 <TerminalPane
@@ -504,6 +603,8 @@
                   onctrlused={() => (ctrlOn = false)}
                   host={t.host}
                   active={view === 'hosts' && t.key === activeKey}
+                  visible={view === 'hosts' && showSession && (si >= 0 || t.key === activeKey)}
+                  oninput={(d) => broadcast(t.key, d)}
                   onstatus={(s) => onTabStatus(t, s)}
                   onhostkey={() => void loadAll()}
                 />
@@ -718,9 +819,38 @@
     inset: 0;
     display: flex;
   }
-  /* 切到会话时淡入 */
-  .ws:not(.hidden) {
+  /* 切到会话时淡入（不支持 View Transitions 时的兜底） */
+  :global(html.no-vt) .ws:not(.hidden) {
     animation: ws-in 180ms var(--ease) both;
+  }
+  /* 分屏：窗格之间留缝，焦点窗格强调色描边，同步输入时为警告色 */
+  .ws.split {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px var(--line2);
+    transition: box-shadow 160ms ease-out;
+  }
+  .ws.split.focus {
+    box-shadow: 0 0 0 1.5px var(--acc);
+  }
+  .ws.split.bc {
+    box-shadow: 0 0 0 1.5px var(--warn);
+  }
+  .ws.split.bc.focus {
+    box-shadow:
+      0 0 0 1.5px var(--warn),
+      0 0 12px -2px color-mix(in srgb, var(--warn) 50%, transparent);
+  }
+  .bc-chip {
+    background: color-mix(in srgb, var(--warn) 18%, transparent);
+    border-color: var(--warn);
+    color: var(--warn);
+    animation: bc-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes bc-pulse {
+    50% {
+      opacity: 0.65;
+    }
   }
   @keyframes ws-in {
     from {

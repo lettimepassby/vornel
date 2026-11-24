@@ -1,0 +1,19 @@
+// 视图切换过渡：支持 View Transitions 的 WebView（Windows WebView2、较新的 macOS）里，
+// 主机页 ↔ 终端、标签切换时新旧画面交叉淡入并轻微缩放；不支持时直接切换（CSS 里另有淡入兜底）。
+import { flushSync } from 'svelte';
+
+type VTDocument = Document & { startViewTransition?: (cb: () => void) => unknown };
+
+export const supportsViewTransition = typeof document !== 'undefined' && 'startViewTransition' in document;
+
+export function vt(fn: () => void) {
+  const d = document as VTDocument;
+  if (!d.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    fn();
+    return;
+  }
+  d.startViewTransition(() => {
+    fn();
+    flushSync();
+  });
+}
