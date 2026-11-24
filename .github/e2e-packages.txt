@@ -1,0 +1,18 @@
+# E2E 需要的系统包（改动这里会刷新 apt 缓存）
+libwebkit2gtk-4.1-dev
+libayatana-appindicator3-dev
+librsvg2-dev
+webkit2gtk-driver
+xvfb
+openssh-server
+xrdp
+xorgxrdp
+x11vnc
+socat
+rclone
+inetutils-telnetd
+openbsd-inetd
+# 截图里显示中文用（约 5 MB；fonts-noto-cjk 有几十 MB）
+fonts-wqy-microhei
+mosh
+x11-xserver-utils
