@@ -52,12 +52,18 @@ jobs:
               echo "publish=true" >> "$GITHUB_OUTPUT"
               echo "release_id=${STATE#draft:}" >> "$GITHUB_OUTPUT" ;;
             *)
-              gh release create "v$V" --draft --target "$GITHUB_SHA" --title "Vornel v$V" \
-                --notes "安装包见下方附件。已安装的 Vornel 会自动提示更新。macOS 版本暂未签名，首次打开请右键选择“打开”。"
-              ID=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name==\"v$V\") | .id" | head -1)
+              # 直接从创建接口的返回里取 ID（创建后立刻查列表可能还查不到草稿）
+              ID=$(gh api -X POST "repos/$GITHUB_REPOSITORY/releases" \
+                -f tag_name="v$V" -f target_commitish="$GITHUB_SHA" -f name="Vornel v$V" -F draft=true \
+                -f body="安装包见下方附件。已安装的 Vornel 会自动提示更新。macOS 版本暂未签名，首次打开请右键选择“打开”。" \
+                --jq .id)
+              echo "已创建草稿 v$V（id=$ID）"
               echo "publish=true" >> "$GITHUB_OUTPUT"
               echo "release_id=$ID" >> "$GITHUB_OUTPUT" ;;
           esac
+          if grep -q '^publish=true' "$GITHUB_OUTPUT" && ! grep -qE '^release_id=[0-9]+$' "$GITHUB_OUTPUT"; then
+            echo "::error::没有拿到草稿 Release 的 ID"; exit 1
+          fi
 
   build:
     name: ${{ matrix.name }}
