@@ -1,4 +1,4 @@
-name: macOS 界面截图
+name: 界面截图（macOS / Windows）
 
 # 在真实 macOS 上启动打包好的应用并截图，用来检查标题栏（红绿灯）等原生窗口细节。
 # 复用 main 上发布打包留下的编译缓存。
@@ -10,6 +10,8 @@ on:
       - apps/vornel/src/App.svelte
       - apps/vornel/src/components/Sidebar.svelte
       - apps/vornel/src/components/TabBar.svelte
+      - apps/vornel/src/components/WindowControls.svelte
+      - apps/vornel/src-tauri/src/lib.rs
       - .github/workflows/macos-shot.yml
   workflow_dispatch:
 
@@ -57,4 +59,44 @@ jobs:
         if: always()
         with:
           name: macos-shots
+          path: shots/
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: vornel-windows
+          save-if: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/vornel/package-lock.json
+      - name: 编译
+        working-directory: apps/vornel
+        shell: bash
+        run: |
+          npm ci
+          npx tauri icon app-icon.svg
+          npx tauri build --target x86_64-pc-windows-msvc --no-bundle
+      - name: 启动并截图
+        shell: pwsh
+        run: |
+          $exe = "target/x86_64-pc-windows-msvc/release/vornel.exe"
+          Start-Process $exe
+          Start-Sleep -Seconds 15
+          New-Item -ItemType Directory -Force shots | Out-Null
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          $g = [System.Drawing.Graphics]::FromImage($bmp)
+          $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+          $bmp.Save("shots/windows.png")
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-shots
           path: shots/

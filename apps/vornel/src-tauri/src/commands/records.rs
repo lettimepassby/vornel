@@ -100,6 +100,22 @@ pub async fn record_save(state: State<'_, AppState>, kind: String, value: Value)
                 k.sync = incoming.sync;
                 v.put(&k).map_err(err)
             }
+            "secret" => {
+                // 主机的保存密码（编辑主机时直接填写）；是否同步跟随“同步密码”设置
+                let mut s: Secret = parse(value)?;
+                if v.get::<Host>(s.id).map_err(err)?.is_none() {
+                    return Err("主机不存在".into());
+                }
+                if s.password.is_empty() {
+                    return v.delete::<Secret>(s.id).map(|_| ()).map_err(err);
+                }
+                s.sync = v
+                    .get::<Prefs>(Uuid::nil())
+                    .map_err(err)?
+                    .unwrap_or_default()
+                    .sync_secrets;
+                v.put(&s).map_err(err)
+            }
             "snippet" => {
                 let s: Snippet = parse(value)?;
                 if s.name.trim().is_empty() || s.command.trim().is_empty() {
@@ -115,6 +131,13 @@ pub async fn record_save(state: State<'_, AppState>, kind: String, value: Value)
             "prefs" => {
                 let mut p: Prefs = parse(value)?;
                 p.id = Uuid::nil();
+                if p.group_styles.values().any(|g| {
+                    g.image
+                        .as_ref()
+                        .is_some_and(|i| i.len() > 64 * 1024 || !i.starts_with("data:image/"))
+                }) {
+                    return Err("分组图片太大或格式不正确".into());
+                }
                 let before = v
                     .get::<Prefs>(Uuid::nil())
                     .map_err(err)?

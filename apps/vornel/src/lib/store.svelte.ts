@@ -14,6 +14,7 @@ const DEFAULT_PREFS: Prefs = {
   syncSecrets: false,
   screenReader: false,
   copyOnSelect: true,
+  groupStyles: {},
 };
 
 function cachedPrefs(): Prefs {

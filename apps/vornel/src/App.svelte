@@ -26,6 +26,7 @@
   import KnownHostsView from './views/KnownHostsView.svelte';
   import SnippetsView from './views/SnippetsView.svelte';
   import HostsView from './views/HostsView.svelte';
+  import WindowControls from './components/WindowControls.svelte';
 
   interface Tab {
     key: string;
@@ -36,6 +37,8 @@
 
   // macOS 使用 Overlay 标题栏，红绿灯落在侧边栏左上角，需要留出位置
   const macInset = /Macintosh|Mac OS X/.test(navigator.userAgent) && !/iPhone|iPad/.test(navigator.userAgent);
+  /** Windows 使用无边框窗口，顶栏右侧绘制窗口按钮 */
+  const isWindows = /Windows/.test(navigator.userAgent);
   const isTerminal = (h: Host) => ['ssh', 'mosh', 'telnet', 'serial'].includes(h.protocol);
 
   // iOS 或窄窗口使用移动布局（DESIGN.md 5.4）
@@ -113,8 +116,10 @@
   $effect(() => {
     document.documentElement.dataset.theme = prefs.theme;
     void applyFontPack(prefs.fontPack, { ...prefs.fontOverrides });
-    void prefs.terminalFontSize;
-    void prefs.syncSecrets;
+  });
+  // 任何偏好变化（含选中即复制、屏幕阅读器、分组外观等）都写回 Vault
+  $effect(() => {
+    void JSON.stringify(prefs);
     persistPrefs();
   });
 
@@ -187,8 +192,10 @@
   }
 
   // ---------------------------------------------------------------- 主机
-  async function save(h: Host) {
+  async function save(h: Host, password?: string) {
     await api.save('host', h);
+    // 编辑主机时直接填写的密码：加密保存在 Vault，连接时不再询问
+    if (password) await api.save('secret', { id: h.id, password, sync: false });
     await loadAll();
     for (const t of tabs) if (t.host.id === h.id) t.host = h;
     editing = null;
@@ -216,6 +223,15 @@
       e.preventDefault();
       showSession = !showSession;
       if (showSession) view = 'hosts';
+    } else if (!macInset && e.key === 'n') {
+      e.preventDefault();
+      editing = { host: api.blankHost(), isNew: true };
+    } else if (!macInset && e.key === 'w') {
+      e.preventDefault();
+      if (activeKey) closeTab(activeKey);
+    } else if (!macInset && e.key === ',') {
+      e.preventDefault();
+      settingsTab = 'appearance';
     } else if (e.key === 'k') {
       e.preventDefault();
       showSession = false;
@@ -330,6 +346,7 @@
             {/if}
           </div>
         {/if}
+        {#if isWindows}<WindowControls />{/if}
       </div>
       {/if}
 
@@ -403,6 +420,7 @@
             bind:searchInput
             onconnect={openTab}
             onedit={(h) => (editing = { host: h, isNew: false })}
+            onduplicate={(h) => (editing = { host: { ...$state.snapshot(h), id: crypto.randomUUID(), name: `${h.name} 副本`, savePassword: false }, isNew: true })}
             onnew={(g) => (editing = { host: { ...api.blankHost(), group: g }, isNew: true })}
             onquick={quickConnect}
           />

@@ -378,6 +378,24 @@ pub struct Prefs {
     /// 终端里选中文字后自动复制到剪贴板
     #[serde(default = "default_true")]
     pub copy_on_select: bool,
+    /// 分组外观：分组名 → 图标 / 底色 / 自定义图片
+    #[serde(default)]
+    pub group_styles: std::collections::BTreeMap<String, GroupStyle>,
+}
+
+/// 分组卡片的外观。
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupStyle {
+    /// 预设图标：`os:ubuntu` 这类系统 logo，或 `icon:cloud` 这类通用图标
+    #[serde(default)]
+    pub icon: Option<String>,
+    /// 底色（CSS 颜色）
+    #[serde(default)]
+    pub color: Option<String>,
+    /// 自定义图片（缩小后的 PNG data URL，不超过 64 KB）
+    #[serde(default)]
+    pub image: Option<String>,
 }
 
 fn default_true() -> bool {
@@ -405,6 +423,7 @@ impl Default for Prefs {
             sync_secrets: false,
             screen_reader: false,
             copy_on_select: true,
+            group_styles: Default::default(),
         }
     }
 }

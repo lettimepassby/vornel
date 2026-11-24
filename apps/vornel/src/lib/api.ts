@@ -87,6 +87,16 @@ export interface Prefs {
   syncSecrets: boolean;
   screenReader: boolean;
   copyOnSelect: boolean;
+  /** 分组外观：分组名 → 样式 */
+  groupStyles: Record<string, GroupStyle>;
+}
+
+export interface GroupStyle {
+  /** `os:ubuntu` 或 `icon:cloud` */
+  icon?: string | null;
+  color?: string | null;
+  /** 自定义图片（PNG data URL） */
+  image?: string | null;
 }
 
 export const PROTOCOL_PORTS: Record<Protocol, number> = {
@@ -109,7 +119,7 @@ export const PROTOCOL_LABELS: Record<Protocol, string> = {
 
 // ---------------------------------------------------------------- Vault 记录
 
-type Kind = 'host' | 'key' | 'snippet' | 'forward' | 'known_host' | 'prefs';
+type Kind = 'host' | 'key' | 'snippet' | 'forward' | 'known_host' | 'prefs' | 'secret';
 
 export const vaultStatus = () => invoke<{ ok: boolean; error: string | null }>('vault_status');
 export const vaultReset = () => invoke<void>('vault_reset');

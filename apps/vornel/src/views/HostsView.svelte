@@ -1,36 +1,20 @@
-<script lang="ts" module>
-  /** 系统 → 图标底色与缩写（不使用商标图形，只用颜色和字母区分） */
-  const OS_STYLE: Record<string, { bg: string; label: string; name: string }> = {
-    ubuntu: { bg: '#E95420', label: 'Ub', name: 'Ubuntu' },
-    debian: { bg: '#C70036', label: 'De', name: 'Debian' },
-    centos: { bg: '#7B3F98', label: 'Ce', name: 'CentOS' },
-    rocky: { bg: '#10B981', label: 'Ro', name: 'Rocky Linux' },
-    almalinux: { bg: '#0F4266', label: 'Al', name: 'AlmaLinux' },
-    rhel: { bg: '#CC0000', label: 'RH', name: 'Red Hat' },
-    fedora: { bg: '#3C6EB4', label: 'Fe', name: 'Fedora' },
-    alpine: { bg: '#0D597F', label: 'Ap', name: 'Alpine' },
-    arch: { bg: '#1793D1', label: 'Ar', name: 'Arch Linux' },
-    opensuse: { bg: '#73BA25', label: 'Su', name: 'openSUSE' },
-    'opensuse-leap': { bg: '#73BA25', label: 'Su', name: 'openSUSE' },
-    amzn: { bg: '#FF9900', label: 'Az', name: 'Amazon Linux' },
-    freebsd: { bg: '#AB2B28', label: 'BSD', name: 'FreeBSD' },
-    macos: { bg: '#3A3A3C', label: 'mac', name: 'macOS' },
-    linux: { bg: '#4B5563', label: 'Lx', name: 'Linux' },
-  };
-</script>
-
 <script lang="ts">
   import { flip } from 'svelte/animate';
   import { fade } from 'svelte/transition';
   import type { Host } from '../lib/api';
   import Icon from '../components/Icon.svelte';
   import Logo from '../components/Logo.svelte';
+  import { osIcon } from '../lib/os-icons';
+  import { prefs } from '../lib/store.svelte';
+  import GroupDialog from '../components/GroupDialog.svelte';
+  import GroupTile from '../components/GroupTile.svelte';
 
   let {
     hosts,
     connected,
     onconnect,
     onedit,
+    onduplicate,
     onnew,
     onquick,
     searchInput = $bindable(),
@@ -39,6 +23,8 @@
     connected: Set<string>;
     onconnect: (h: Host) => void;
     onedit: (h: Host) => void;
+    /** 以这台主机为模板新建（复制一份） */
+    onduplicate: (h: Host) => void;
     onnew: (group: string | null) => void;
     /** 快速连接：`ssh user@host -p 22` / `user@host:port` */
     onquick: (target: { username: string; address: string; port: number }) => void;
@@ -48,6 +34,8 @@
   let query = $state('');
   /** 当前打开的分组（null = 全部） */
   let group = $state<string | null>(null);
+  /** 正在编辑外观的分组 */
+  let editingGroup = $state<string | null>(null);
 
   /** 解析快速连接输入 */
   const quick = $derived.by(() => {
@@ -82,11 +70,13 @@
     return [...list].sort((a, b) => a.name.localeCompare(b.name));
   });
 
-  function osStyle(h: Host) {
-    if (h.protocol === 'rdp' || h.protocol === 'vnc') return { bg: '#2563EB', label: '', name: h.protocol.toUpperCase(), icon: 'monitor' as const };
-    if (h.protocol === 'serial' || h.protocol === 'telnet') return { bg: '#57534E', label: '', name: h.protocol, icon: 'terminal' as const };
-    const s = h.os ? OS_STYLE[h.os] : undefined;
-    return s ? { ...s, icon: null } : { bg: 'var(--acc)', label: '', name: '未识别系统', icon: 'host' as const };
+  /** 卡片图标：远端系统的 logo；RDP / VNC 用显示器，串口 / Telnet 用终端，未识别用服务器图标 */
+  function tileFor(h: Host) {
+    if (h.protocol === 'rdp' || h.protocol === 'vnc') return { bg: '#2563EB', fg: '#fff', name: h.protocol.toUpperCase(), icon: 'monitor' as const, path: null };
+    if (h.protocol === 'serial' || h.protocol === 'telnet') return { bg: '#57534E', fg: '#fff', name: h.protocol, icon: 'terminal' as const, path: null };
+    const os = osIcon(h.os);
+    if (os) return { bg: os.bg, fg: os.fg, name: os.name, icon: null, path: os.path };
+    return { bg: 'color-mix(in srgb, var(--acc) 80%, #000)', fg: '#fff', name: h.os ? h.os : '连接后自动识别系统', icon: 'host' as const, path: null };
   }
 
   function submitSearch(e: Event) {
@@ -107,12 +97,14 @@
     {#if quick}
       <button class="btn" type="submit" in:fade={{ duration: 120 }}>连接 {quick.username}@{quick.address}</button>
     {:else}
-      <kbd>⌘K</kbd>
+      <kbd>{/Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘K' : 'Ctrl+K'}</kbd>
     {/if}
   </form>
 
   <div class="tools">
-    <button class="btn" type="button" onclick={() => onnew(group)}><Icon name="plus" size={14} stroke={2} />新建主机</button>
+    {#if hosts.length}
+      <button class="btn" type="button" onclick={() => onnew(group)}><Icon name="plus" size={14} stroke={2} />新建主机</button>
+    {/if}
     {#if group}
       <nav class="crumb" aria-label="当前位置" in:fade={{ duration: 120 }}>
         <button type="button" class="link" onclick={() => (group = null)}>全部主机</button>
@@ -135,10 +127,25 @@
         <h2>分组</h2>
         <div class="grid">
           {#each groups as [g, n], i (g)}
-            <button class="card" type="button" style:--i={i} onclick={() => (group = g)} title="打开分组 {g}">
-              <span class="tile grp"><Icon name="group" size={20} /></span>
-              <span class="txt"><b>{g}</b><small>{n} 台主机</small></span>
-            </button>
+            <div class="cell">
+              <button
+                class="card"
+                type="button"
+                style:--i={i}
+                onclick={() => (group = g)}
+                oncontextmenu={(e) => {
+                  e.preventDefault();
+                  editingGroup = g;
+                }}
+                title="打开分组 {g}（右键设置外观）"
+              >
+                <span class="gt"><GroupTile style={prefs.groupStyles?.[g]} /></span>
+                <span class="txt"><b>{g}</b><small>{n} 台主机</small></span>
+              </button>
+              <div class="acts">
+                <button class="icon-btn" type="button" aria-label="设置分组 {g} 的外观" title="分组外观" onclick={() => (editingGroup = g)}><Icon name="edit" size={14} /></button>
+              </div>
+            </div>
           {/each}
         </div>
       {/if}
@@ -147,7 +154,7 @@
       {#if shown.length}
         <div class="grid">
           {#each shown as h, i (h.id)}
-            {@const st = osStyle(h)}
+            {@const st = tileFor(h)}
             <div class="cell" animate:flip={{ duration: 180 }}>
               <button
                 class="card"
@@ -160,8 +167,12 @@
                 }}
                 title="连接 {h.username ? `${h.username}@` : ''}{h.address}:{h.port}（右键编辑）"
               >
-                <span class="tile" style:background={st.bg} title={st.name}>
-                  {#if st.icon}<Icon name={st.icon} size={19} />{:else}<span class="os">{st.label}</span>{/if}
+                <span class="tile" style:background={st.bg} style:color={st.fg} title={st.name}>
+                  {#if st.path}
+                    <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path d={st.path} fill="currentColor" /></svg>
+                  {:else if st.icon}
+                    <Icon name={st.icon} size={19} />
+                  {/if}
                   {#if connected.has(h.id)}<span class="live" aria-label="已连接"></span>{/if}
                 </span>
                 <span class="txt">
@@ -169,7 +180,10 @@
                   <small class="mono">{h.protocol}{h.username ? `, ${h.username}` : ''}</small>
                 </span>
               </button>
-              <button class="edit icon-btn" type="button" aria-label="编辑 {h.name}" onclick={() => onedit(h)}><Icon name="edit" size={14} /></button>
+              <div class="acts">
+                <button class="icon-btn" type="button" aria-label="复制 {h.name}" title="复制一份" onclick={() => onduplicate(h)}><Icon name="copy" size={14} /></button>
+                <button class="icon-btn" type="button" aria-label="编辑 {h.name}" title="编辑" onclick={() => onedit(h)}><Icon name="edit" size={14} /></button>
+              </div>
             </div>
           {/each}
         </div>
@@ -179,6 +193,16 @@
     {/if}
   </div>
 </section>
+
+{#if editingGroup}
+  <GroupDialog
+    group={editingGroup}
+    onclose={() => (editingGroup = null)}
+    onrenamed={(n) => {
+      if (group === editingGroup) group = n;
+    }}
+  />
+{/if}
 
 <style>
   .hv {
@@ -258,7 +282,8 @@
   }
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    /* 260px：常见窗口宽度下一行 4 张，主机名约 21 个字符内能完整显示 */
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 10px;
   }
   .cell {
@@ -309,12 +334,16 @@
   .card:hover .tile {
     transform: scale(1.06) rotate(-3deg);
   }
-  .tile.grp {
-    background: color-mix(in srgb, var(--acc) 85%, #000);
+  .gt {
+    display: flex;
+    transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
-  .os {
-    font: 700 12.5px var(--f-ui);
-    letter-spacing: -0.02em;
+  .card:hover .gt {
+    transform: scale(1.06) rotate(-3deg);
+  }
+  .logo {
+    width: 21px;
+    height: 21px;
   }
   .live {
     position: absolute;
@@ -347,17 +376,30 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .edit {
+  /* 悬停时才浮出的操作按钮：平时不占位置，名字可以用满整张卡片 */
+  .acts {
     position: absolute;
-    right: 8px;
-    top: 50%;
-    translate: 0 -50%;
+    top: 1px;
+    right: 1px;
+    bottom: 1px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 8px 0 28px;
+    border-radius: 0 10px 10px 0;
+    background: linear-gradient(to right, transparent, var(--raise) 24px);
     opacity: 0;
-    transition: opacity 120ms ease-out;
+    translate: 6px 0;
+    pointer-events: none;
+    transition:
+      opacity 140ms ease-out,
+      translate 140ms ease-out;
   }
-  .cell:hover .edit,
-  .edit:focus-visible {
+  .cell:hover .acts,
+  .acts:focus-within {
     opacity: 1;
+    translate: 0 0;
+    pointer-events: auto;
   }
   .none {
     color: var(--mut);
