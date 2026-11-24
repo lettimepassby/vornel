@@ -26,6 +26,7 @@
   import KnownHostsView from './views/KnownHostsView.svelte';
   import SnippetsView from './views/SnippetsView.svelte';
   import HostsView from './views/HostsView.svelte';
+  import WindowControls from './components/WindowControls.svelte';
 
   interface Tab {
     key: string;
@@ -36,6 +37,8 @@
 
   // macOS 使用 Overlay 标题栏，红绿灯落在侧边栏左上角，需要留出位置
   const macInset = /Macintosh|Mac OS X/.test(navigator.userAgent) && !/iPhone|iPad/.test(navigator.userAgent);
+  /** Windows 使用无边框窗口，顶栏右侧绘制窗口按钮 */
+  const isWindows = /Windows/.test(navigator.userAgent);
   const isTerminal = (h: Host) => ['ssh', 'mosh', 'telnet', 'serial'].includes(h.protocol);
 
   // iOS 或窄窗口使用移动布局（DESIGN.md 5.4）
@@ -220,6 +223,15 @@
       e.preventDefault();
       showSession = !showSession;
       if (showSession) view = 'hosts';
+    } else if (!macInset && e.key === 'n') {
+      e.preventDefault();
+      editing = { host: api.blankHost(), isNew: true };
+    } else if (!macInset && e.key === 'w') {
+      e.preventDefault();
+      if (activeKey) closeTab(activeKey);
+    } else if (!macInset && e.key === ',') {
+      e.preventDefault();
+      settingsTab = 'appearance';
     } else if (e.key === 'k') {
       e.preventDefault();
       showSession = false;
@@ -334,6 +346,7 @@
             {/if}
           </div>
         {/if}
+        {#if isWindows}<WindowControls />{/if}
       </div>
       {/if}
 

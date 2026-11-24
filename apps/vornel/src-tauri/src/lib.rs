@@ -4,9 +4,9 @@ mod state;
 use std::collections::HashMap;
 use std::path::Path;
 
-#[cfg(desktop)]
+#[cfg(target_os = "macos")]
 use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
-#[cfg(desktop)]
+#[cfg(target_os = "macos")]
 use tauri::Emitter;
 use tauri::Manager;
 use tokio::sync::Mutex;
@@ -28,8 +28,9 @@ fn migrate_hosts_json(dir: &Path, vault: &mut Vault) {
     }
 }
 
-/// 桌面端菜单（iOS 没有菜单栏）。
-#[cfg(desktop)]
+/// macOS 菜单栏（显示在屏幕顶部的系统菜单里）。
+/// Windows / Linux 不使用菜单栏：它会挂在窗口顶部、颜色不跟随主题；快捷键由前端处理。
+#[cfg(target_os = "macos")]
 fn build_menu(app: &tauri::App) -> tauri::Result<()> {
     // macOS 默认菜单的 ⌘W 会关闭整个窗口；这里换成“关闭标签”，交给前端处理
     let close_tab = MenuItemBuilder::with_id("close-tab", "关闭标签")
@@ -116,9 +117,16 @@ pub fn run() {
                 remotes: Mutex::new(HashMap::new()),
             });
 
+            #[cfg(target_os = "macos")]
+            build_menu(app)?;
+            // Windows：去掉系统标题栏，由界面绘制与主题一致的顶栏和窗口按钮
+            #[cfg(windows)]
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.set_decorations(false);
+                let _ = w.set_shadow(true);
+            }
             #[cfg(desktop)]
             {
-                build_menu(app)?;
                 // 应用内更新：检查、下载、安装由前端驱动；装完用 process 插件重启。
                 // iOS 走 App Store，不注册这两个插件。
                 app.handle()
