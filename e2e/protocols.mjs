@@ -116,9 +116,15 @@ async function waitText(key, pred, what, timeout = 30000) {
   return last;
 }
 /** 点击终端获得焦点，再用真实键盘事件输入（只用不需要 Shift 的字符）。 */
+/** 像真实键盘一样逐个字符输入到当前焦点：WebKitWebDriver 一次发送多个字符时偶尔会打乱顺序 */
+async function typeKeys(text) {
+  for (const ch of text) await driver.actions().sendKeys(ch).perform();
+  await driver.actions().sendKeys(Key.ENTER).perform();
+}
+
 async function keyboard(name, text) {
   await click(By.xpath(`${pane(name)}//div[contains(@class, "xterm-screen")]`));
-  await driver.actions().sendKeys(text, Key.ENTER).perform();
+  await typeKeys(text);
 }
 const promptAfter = (marker) => (t) => {
   const i = t.lastIndexOf(marker);

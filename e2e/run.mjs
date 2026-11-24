@@ -75,6 +75,12 @@ async function type(locator, text, clear = true) {
 const field = (label) => By.xpath(`//label[span[starts-with(normalize-space(.), ${JSON.stringify(label)})]]//input`);
 const button = (text) => By.xpath(`//button[contains(normalize-space(.), ${JSON.stringify(text)})]`);
 
+/** 像真实键盘一样逐个字符输入到当前焦点：WebKitWebDriver 一次发送多个字符时偶尔会打乱顺序 */
+async function typeKeys(text) {
+  for (const ch of text) await driver.actions().sendKeys(ch).perform();
+  await driver.actions().sendKeys(Key.ENTER).perform();
+}
+
 async function terminalText() {
   return driver.executeScript(
     'const t = window.__vornelTerminals || {}; return Object.values(t).map((f) => f()).join("\\n");',
@@ -165,7 +171,7 @@ try {
   await check('终端执行命令并读回输出', async () => {
     // 点击终端获得焦点，再像真实键盘一样输入（xterm 的输入框是隐藏元素）
     await click(By.css('div[role="application"] .xterm-screen'));
-    await driver.actions().sendKeys('printf e2e-; seq 42 42', Key.ENTER).perform();
+    await typeKeys('printf e2e-; seq 42 42');
     await waitTerminal('e2e-42');
     await shot('ssh-command');
   });
