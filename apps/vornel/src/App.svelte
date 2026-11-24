@@ -594,7 +594,7 @@
             class:focus={si >= 0 && t.key === activeKey}
             class:bc={si >= 0 && split?.broadcast}
             style={si >= 0 && split ? paneStyle(si, splitKeys!.length, split.layout) : undefined}
-            onpointerdowncapture={() => si >= 0 && t.key !== activeKey && (activeKey = t.key)}
+            onmousedowncapture={() => si >= 0 && t.key !== activeKey && (activeKey = t.key)}
           >
             <div class="term-area" oncontextmenu={(e) => isTerminal(t.host) && terminalMenu(e, t)}>
               {#if isTerminal(t.host)}
