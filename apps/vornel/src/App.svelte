@@ -440,7 +440,8 @@
           onclose={closeTab}
           oncontext={tabMenu}
         />
-        {#if activeTab && view === 'hosts' && isTerminal(activeTab.host)}
+        <!-- 片段 / SFTP / 外观 只在看着会话时显示 -->
+        {#if activeTab && view === 'hosts' && showSession && isTerminal(activeTab.host)}
           <div class="tools">
             <div class="snip">
               <button class="btn ghost" type="button" aria-expanded={snippetMenu} onclick={() => (snippetMenu = !snippetMenu)} disabled={!data.snippets.length}>

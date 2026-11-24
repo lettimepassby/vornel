@@ -39,7 +39,7 @@ async function find(locator, timeout = 20000) {
 // 沉浸模式下侧边栏是隐藏的：要点侧边栏里的东西时，先点标签栏的“主机”按钮把它调出来（用户的真实操作路径）
 async function showSidebarIfNeeded(locator) {
   const q = String(locator.value ?? locator);
-  if (!/aside|主导航|新建主机|"设置"|主机列表/.test(q)) return;
+  if (!/\/\/aside\/\/|主导航|新建主机|"设置"|主机列表/.test(q)) return;
   const home = await driver.findElements(By.css('button.home-btn'));
   if (home.length && (await home[0].isDisplayed())) await home[0].click();
   // 主机卡片只在“主机”页显示：从其他页面（密钥串等）先切回主机页
@@ -161,7 +161,7 @@ try {
     if (overflow > 1) throw new Error(`终端超出容器 ${overflow}px，最后一行会被切掉`);
     // 沉浸模式：连上后侧边栏隐藏，终端几乎占满窗口宽度
     const layout = await driver.executeScript(`
-      const aside = document.querySelector('aside');
+      const aside = document.querySelector('aside.sb');
       const stage = document.querySelector('.stage').getBoundingClientRect();
       return { aside: !!aside, ratio: stage.width / window.innerWidth };`);
     if (layout.aside || layout.ratio < 0.98) throw new Error(`没有进入全屏终端：${JSON.stringify(layout)}`);
