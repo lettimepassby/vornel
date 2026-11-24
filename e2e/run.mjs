@@ -284,6 +284,28 @@ try {
     for (const p of prompts) if (await p.isDisplayed()) throw new Error('已保存密码，但仍然弹出了密码框');
     await shot('saved-password-connect');
   });
+  await check('分组外观：选系统 logo 和底色、改名', async () => {
+    await click(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'));
+    const edit = await find(By.css('section[aria-label="主机列表"] button[aria-label="设置分组 e2e-group 的外观"]'));
+    await driver.executeScript('arguments[0].click()', edit);
+    await find(By.xpath('//dialog//h2[contains(., "分组外观")]'));
+    await click(By.css('dialog button[aria-label="Debian"]'));
+    await click(By.css('dialog button[aria-label="底色 #059669"]'));
+    await type(field('分组名称'), 'e2e-team');
+    await shot('group-style');
+    await click(By.xpath('//dialog//button[@type="submit"]'));
+    const card = await find(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-team")][contains(., "1 台主机")]'));
+    const look = await driver.executeScript(
+      'const t = arguments[0].querySelector(".tile"); return { bg: getComputedStyle(t).backgroundColor, logo: !!t.querySelector("svg path") };',
+      card,
+    );
+    if (!look.logo || look.bg !== 'rgb(5, 150, 105)') throw new Error(`分组图标不对：${JSON.stringify(look)}`);
+    if ((await driver.findElements(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-group")]'))).length) throw new Error('改名后旧分组还在');
+    // 外观写进了偏好（会随同步走）
+    const saved = await driver.executeScript('return JSON.parse(localStorage.getItem("vornel.prefs") || "{}").groupStyles?.["e2e-team"];');
+    if (!saved || saved.icon !== 'os:debian') throw new Error(`偏好里没有保存分组外观：${JSON.stringify(saved)}`);
+    await shot('group-styled');
+  });
 } finally {
   await driver.quit().catch(() => {});
   console.log('\n结果：');

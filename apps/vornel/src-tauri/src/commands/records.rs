@@ -131,6 +131,13 @@ pub async fn record_save(state: State<'_, AppState>, kind: String, value: Value)
             "prefs" => {
                 let mut p: Prefs = parse(value)?;
                 p.id = Uuid::nil();
+                if p.group_styles.values().any(|g| {
+                    g.image
+                        .as_ref()
+                        .is_some_and(|i| i.len() > 64 * 1024 || !i.starts_with("data:image/"))
+                }) {
+                    return Err("分组图片太大或格式不正确".into());
+                }
                 let before = v
                     .get::<Prefs>(Uuid::nil())
                     .map_err(err)?

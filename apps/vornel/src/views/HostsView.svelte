@@ -5,6 +5,9 @@
   import Icon from '../components/Icon.svelte';
   import Logo from '../components/Logo.svelte';
   import { osIcon } from '../lib/os-icons';
+  import { prefs } from '../lib/store.svelte';
+  import GroupDialog from '../components/GroupDialog.svelte';
+  import GroupTile from '../components/GroupTile.svelte';
 
   let {
     hosts,
@@ -28,6 +31,8 @@
   let query = $state('');
   /** 当前打开的分组（null = 全部） */
   let group = $state<string | null>(null);
+  /** 正在编辑外观的分组 */
+  let editingGroup = $state<string | null>(null);
 
   /** 解析快速连接输入 */
   const quick = $derived.by(() => {
@@ -119,10 +124,23 @@
         <h2>分组</h2>
         <div class="grid">
           {#each groups as [g, n], i (g)}
-            <button class="card" type="button" style:--i={i} onclick={() => (group = g)} title="打开分组 {g}">
-              <span class="tile grp"><Icon name="group" size={20} /></span>
-              <span class="txt"><b>{g}</b><small>{n} 台主机</small></span>
-            </button>
+            <div class="cell">
+              <button
+                class="card"
+                type="button"
+                style:--i={i}
+                onclick={() => (group = g)}
+                oncontextmenu={(e) => {
+                  e.preventDefault();
+                  editingGroup = g;
+                }}
+                title="打开分组 {g}（右键设置外观）"
+              >
+                <span class="gt"><GroupTile style={prefs.groupStyles?.[g]} /></span>
+                <span class="txt"><b>{g}</b><small>{n} 台主机</small></span>
+              </button>
+              <button class="edit icon-btn" type="button" aria-label="设置分组 {g} 的外观" onclick={() => (editingGroup = g)}><Icon name="edit" size={14} /></button>
+            </div>
           {/each}
         </div>
       {/if}
@@ -167,6 +185,16 @@
     {/if}
   </div>
 </section>
+
+{#if editingGroup}
+  <GroupDialog
+    group={editingGroup}
+    onclose={() => (editingGroup = null)}
+    onrenamed={(n) => {
+      if (group === editingGroup) group = n;
+    }}
+  />
+{/if}
 
 <style>
   .hv {
@@ -297,8 +325,12 @@
   .card:hover .tile {
     transform: scale(1.06) rotate(-3deg);
   }
-  .tile.grp {
-    background: color-mix(in srgb, var(--acc) 85%, #000);
+  .gt {
+    display: flex;
+    transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .card:hover .gt {
+    transform: scale(1.06) rotate(-3deg);
   }
   .logo {
     width: 21px;

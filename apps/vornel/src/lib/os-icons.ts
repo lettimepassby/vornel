@@ -57,3 +57,6 @@ export function osIcon(os: string | null | undefined): OsIcon | null {
   const id = os.toLowerCase();
   return ICONS[ALIASES[id] ?? id] ?? null;
 }
+
+/** 所有可选的系统 logo（用于分组外观选择） */
+export const OS_ICON_IDS = Object.keys(ICONS);

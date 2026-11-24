@@ -113,8 +113,10 @@
   $effect(() => {
     document.documentElement.dataset.theme = prefs.theme;
     void applyFontPack(prefs.fontPack, { ...prefs.fontOverrides });
-    void prefs.terminalFontSize;
-    void prefs.syncSecrets;
+  });
+  // 任何偏好变化（含选中即复制、屏幕阅读器、分组外观等）都写回 Vault
+  $effect(() => {
+    void JSON.stringify(prefs);
     persistPrefs();
   });
 
