@@ -97,7 +97,7 @@
     {#if quick}
       <button class="btn" type="submit" in:fade={{ duration: 120 }}>连接 {quick.username}@{quick.address}</button>
     {:else}
-      <kbd>⌘K</kbd>
+      <kbd>{/Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘K' : 'Ctrl+K'}</kbd>
     {/if}
   </form>
 
