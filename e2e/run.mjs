@@ -55,6 +55,17 @@ async function click(locator) {
 }
 async function type(locator, text, clear = true) {
   const el = await find(locator);
+  // WebKitWebDriver 输入需要 Shift 的字符（大写字母、符号）时偶尔会打乱顺序：
+  // 这类文字直接设置值并触发 input 事件，其余仍按真实键盘输入
+  if (/[A-Z~!@#$%^&*()_+{}|:"<>?]/.test(String(text))) {
+    await driver.executeScript(
+      'const el = arguments[0]; el.focus(); el.value = (arguments[2] ? "" : el.value) + arguments[1]; el.dispatchEvent(new Event("input", { bubbles: true }));',
+      el,
+      String(text),
+      clear,
+    );
+    return el;
+  }
   if (clear) {
     await el.sendKeys(Key.chord(Key.CONTROL, 'a'), Key.BACK_SPACE);
   }
@@ -178,12 +189,15 @@ try {
 
   await check('右键菜单：终端粘贴、标签复制会话', async () => {
     const clip = (text) => driver.executeScript("return window.__TAURI_INTERNALS__.invoke('clipboard_write', { text: arguments[0] });", text);
-    await clip('printf ctx-; seq 7 7\n');
+    await clip('printf ctx-; seq 7 7');
     const scr = await find(By.css('div[role="application"] .xterm-screen'));
     await driver.actions().contextClick(scr).perform();
     await find(By.css('div.cm[role="menu"]'));
     await shot('ctx-terminal');
     await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][contains(., "粘贴")]'));
+    // bash 开启了 bracketed paste：粘贴的换行不会直接执行（与其他终端一致），需要再按回车
+    await waitTerminal('printf ctx-; seq 7 7');
+    await driver.actions().sendKeys(Key.ENTER).perform();
     await waitTerminal('ctx-7');
     // 标签右键 → 复制会话：多出一个标签
     const before = (await driver.findElements(By.css('div[role="tablist"] .tab'))).length;
