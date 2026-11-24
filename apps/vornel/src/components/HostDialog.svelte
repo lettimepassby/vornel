@@ -4,6 +4,7 @@
   import { PROTOCOL_LABELS, PROTOCOL_PORTS, type Host, type Protocol } from '../lib/api';
   import { data } from '../lib/store.svelte';
   import Dialog from './Dialog.svelte';
+  import Icon from './Icon.svelte';
 
   let {
     host,
@@ -31,6 +32,20 @@
   let password = $state('');
   /** 已保存过密码、用户点了“清除” */
   let clearPassword = $state(false);
+  let showPassword = $state(false);
+
+  /** 显示 / 隐藏密码；已保存过密码时先从 Vault 读出来 */
+  async function togglePassword() {
+    if (!showPassword && !password && hadPassword && !clearPassword) {
+      try {
+        password = (await api.secretGet(host.id)) ?? '';
+      } catch (err) {
+        error = api.errorText(err);
+        return;
+      }
+    }
+    showPassword = !showPassword;
+  }
   const hadPassword = untrack(() => !isNew && host.savePassword);
   /** 分组：下拉选择已有分组，或“新建分组”后输入名称 */
   const NEW_GROUP = '\u0000new';
@@ -204,13 +219,19 @@
       {#if authType === 'password'}
 <label class="field">
           <span>密码</span>
-          <input
-            class="input mono"
-            type="password"
-            bind:value={password}
-            autocomplete="new-password"
-            placeholder={hadPassword && !clearPassword ? '已保存（留空则不修改）' : '留空则连接时再输入'}
-          />
+          <span class="pw">
+            <input
+              class="input mono"
+              type={showPassword ? 'text' : 'password'}
+              bind:value={password}
+              autocomplete="new-password"
+              spellcheck="false"
+              placeholder={hadPassword && !clearPassword ? '已保存（留空则不修改）' : '留空则连接时再输入'}
+            />
+            <button class="icon-btn eye" type="button" aria-label={showPassword ? '隐藏密码' : '显示密码'} title={showPassword ? '隐藏密码' : '显示密码'} onclick={togglePassword}>
+              <Icon name={showPassword ? 'eyeOff' : 'eye'} size={15} />
+            </button>
+          </span>
         </label>
         {#if hadPassword && !clearPassword}
           <button class="link clear" type="button" onclick={() => ((clearPassword = true), (password = ''))}>清除已保存的密码</button>
@@ -243,13 +264,19 @@
     {:else if draft.protocol === 'rdp' || draft.protocol === 'vnc'}
 <label class="field">
         <span>密码</span>
-          <input
-            class="input mono"
-            type="password"
-            bind:value={password}
-            autocomplete="new-password"
-            placeholder={hadPassword && !clearPassword ? '已保存（留空则不修改）' : '留空则连接时再输入'}
-          />
+          <span class="pw">
+            <input
+              class="input mono"
+              type={showPassword ? 'text' : 'password'}
+              bind:value={password}
+              autocomplete="new-password"
+              spellcheck="false"
+              placeholder={hadPassword && !clearPassword ? '已保存（留空则不修改）' : '留空则连接时再输入'}
+            />
+            <button class="icon-btn eye" type="button" aria-label={showPassword ? '隐藏密码' : '显示密码'} title={showPassword ? '隐藏密码' : '显示密码'} onclick={togglePassword}>
+              <Icon name={showPassword ? 'eyeOff' : 'eye'} size={15} />
+            </button>
+          </span>
         </label>
         {#if hadPassword && !clearPassword}
           <button class="link clear" type="button" onclick={() => ((clearPassword = true), (password = ''))}>清除已保存的密码</button>
@@ -286,6 +313,20 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
     align-items: end;
+  }
+  .pw {
+    position: relative;
+    display: flex;
+  }
+  .pw input {
+    flex: 1;
+    padding-right: 36px;
+  }
+  .eye {
+    position: absolute;
+    right: 3px;
+    top: 50%;
+    translate: 0 -50%;
   }
   .clear {
     align-self: flex-start;

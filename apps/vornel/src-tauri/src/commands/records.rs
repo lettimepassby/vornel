@@ -189,3 +189,12 @@ pub async fn record_delete(state: State<'_, AppState>, kind: String, id: Uuid) -
         Ok(())
     })
 }
+
+/// 读取某台主机保存的密码（编辑主机时点“显示密码”）。没有保存时返回 None。
+#[tauri::command]
+pub async fn secret_get(state: State<'_, AppState>, host_id: Uuid) -> CmdResult<Option<String>> {
+    with_vault!(state, |v| Ok(v
+        .get::<Secret>(host_id)
+        .map_err(err)?
+        .map(|s| s.password)))
+}

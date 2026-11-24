@@ -124,6 +124,9 @@ type Kind = 'host' | 'key' | 'snippet' | 'forward' | 'known_host' | 'prefs' | 's
 export const vaultStatus = () => invoke<{ ok: boolean; error: string | null }>('vault_status');
 export const vaultReset = () => invoke<void>('vault_reset');
 export const list = <T>(kind: Kind) => invoke<T[]>('records_list', { kind });
+/** 读取主机保存的密码（用于在编辑主机时查看） */
+export const secretGet = (hostId: string) => invoke<string | null>('secret_get', { hostId });
+
 export const save = (kind: Exclude<Kind, 'known_host'>, value: unknown) =>
   invoke<void>('record_save', { kind, value });
 export const remove = (kind: Kind | 'secret', id: string) => invoke<void>('record_delete', { kind, id });

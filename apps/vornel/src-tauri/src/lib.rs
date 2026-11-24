@@ -141,6 +141,7 @@ pub fn run() {
             commands::records::records_list,
             commands::records::record_save,
             commands::records::record_delete,
+            commands::records::secret_get,
             commands::keys::key_generate,
             commands::keys::key_import,
             commands::session::session_open,

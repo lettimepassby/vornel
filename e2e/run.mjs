@@ -312,6 +312,21 @@ try {
         .filter((b) => b.scrollWidth > b.clientWidth + 1).map((b) => b.textContent);`);
     if (cut.length) throw new Error(`主机名被截断：${cut.join('、')}`);
   });
+  await check('编辑主机时可以查看已保存的密码', async () => {
+    await click(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'));
+    const team = await find(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-team")]'));
+    await team.click();
+    const edit = await driver.wait(until.elementLocated(By.css('section[aria-label="主机列表"] button[aria-label="编辑 e2e-saved"]')), 20000);
+    await driver.executeScript('arguments[0].click()', edit);
+    const pw = await find(By.xpath('//dialog//label[span[normalize-space(.)="密码"]]//input'));
+    if ((await pw.getAttribute('type')) !== 'password') throw new Error('密码默认应当隐藏');
+    await click(By.css('dialog button[aria-label="显示密码"]'));
+    await driver.wait(async () => (await pw.getAttribute('value')) === env('SSH_PASS') && (await pw.getAttribute('type')) === 'text', 5000, '点击后没有显示已保存的密码');
+    await shot('show-password');
+    await click(By.css('dialog button[aria-label="隐藏密码"]'));
+    if ((await pw.getAttribute('type')) !== 'password') throw new Error('再次点击后没有隐藏');
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+  });
 } finally {
   await driver.quit().catch(() => {});
   console.log('\n结果：');
