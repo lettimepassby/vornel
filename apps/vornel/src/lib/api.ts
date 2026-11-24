@@ -91,6 +91,12 @@ export interface Prefs {
   copyOnSelect: boolean;
   /** 分组外观：分组名 → 样式 */
   groupStyles: Record<string, GroupStyle>;
+  /** 终端配色：auto 跟随界面 */
+  terminalTheme: string;
+  /** 终端行高；null 使用字体包默认 */
+  terminalLineHeight: number | null;
+  cursorStyle: 'block' | 'bar' | 'underline';
+  cursorBlink: boolean;
 }
 
 export interface GroupStyle {

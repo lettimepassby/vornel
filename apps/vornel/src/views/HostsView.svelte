@@ -1,3 +1,8 @@
+<script lang="ts" module>
+  /** 打开会话时主机页会被卸载：搜索词、所在分组、滚动位置保存在这里，回来时恢复 */
+  const saved = { query: '', group: null as string | null, scroll: 0 };
+</script>
+
 <script lang="ts">
   import { flip } from 'svelte/animate';
   import { fade } from 'svelte/transition';
@@ -10,6 +15,8 @@
   import GroupTile from '../components/GroupTile.svelte';
   import { openMenu } from '../lib/contextmenu.svelte';
   import { copyText } from '../lib/clipboard';
+  import { hostsNav } from '../lib/hostsview.svelte';
+  import { untrack } from 'svelte';
 
   let {
     hosts,
@@ -36,9 +43,29 @@
   } = $props();
 
   const SEARCH_KEY = /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘K' : 'Ctrl+K';
-  let query = $state('');
+  let query = $state(saved.query);
   /** 当前打开的分组（null = 全部） */
-  let group = $state<string | null>(null);
+  let group = $state<string | null>(saved.group);
+  let scroller = $state<HTMLDivElement>();
+  $effect(() => {
+    saved.query = query;
+    saved.group = group;
+  });
+  // 回到主机页时恢复滚动位置
+  $effect(() => {
+    if (scroller) scroller.scrollTop = saved.scroll;
+  });
+  // 已在主机页时再点侧边栏“主机”：回到全部主机
+  let seenReset = untrack(() => hostsNav.resetCount);
+  $effect(() => {
+    const r = hostsNav.resetCount;
+    if (r === seenReset) return;
+    seenReset = r;
+    query = '';
+    group = null;
+    saved.scroll = 0;
+    if (scroller) scroller.scrollTop = 0;
+  });
   /** 正在编辑外观的分组 */
   let editingGroup = $state<string | null>(null);
 
@@ -150,7 +177,7 @@
     {/if}
   </div>
 
-  <div class="scroll" role="presentation" oncontextmenu={blankMenu}>
+  <div class="scroll" role="presentation" bind:this={scroller} onscroll={() => scroller && (saved.scroll = scroller.scrollTop)} oncontextmenu={blankMenu}>
     {#if !hosts.length}
       <div class="empty">
         <Logo size={56} blink />

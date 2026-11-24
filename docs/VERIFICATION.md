@@ -63,6 +63,10 @@
 | M4 iOS | `ios.yml` 模拟器启动截图。**签名 IPA 需要用户的证书，见下方** |
 | M5 RDP、VNC、Mosh、Telnet、串口 | `servers.rs`、`vornel-mosh` 测试、`vornel-term/tests/real.rs`（真实 telnetd、socat 虚拟串口）；`protocols.mjs` 界面连接 Telnet / VNC / Mosh |
 | 自动更新 | `updater-e2e.yml` |
+| 主机页（分组卡片、系统 logo、快速连接 `ssh user@host`、按最近连接排序） | `run.mjs`：快速连接、自动识别系统（Ubuntu logo）、最近连接排在最前、主机名不被截断 |
+| 新建主机时填写密码 / 查看已保存的密码 | `run.mjs`：填写密码后连接不再询问；编辑时点“显示密码”读出正确密码 |
+| 分组：下拉选择、新建、外观（logo / 底色 / 图片）、改名 | `run.mjs`：新建分组、设置 Debian logo 与底色、改名后主机跟随 |
+| 右键菜单（主机、分组、空白处、终端、标签、输入框）与原生剪贴板 | `run.mjs`：终端右键粘贴并执行、标签复制会话 / 关闭、主机卡片复制地址（读回系统剪贴板） |
 | 导入数据（从其他客户端迁移） | `import.rs` 单元测试：主机、密码、密钥（解开口令）、跳板机引用、已知主机、重复导入跳过 |
 
 ### 字体包（第 8 节）

@@ -39,7 +39,7 @@ async function find(locator, timeout = 20000) {
 // 沉浸模式下侧边栏是隐藏的：要点侧边栏里的东西时，先点标签栏的“主机”按钮把它调出来（用户的真实操作路径）
 async function showSidebarIfNeeded(locator) {
   const q = String(locator.value ?? locator);
-  if (!/aside|主导航|新建主机|"设置"|主机列表/.test(q)) return;
+  if (!/\/\/aside\/\/|主导航|新建主机|"设置"|主机列表/.test(q)) return;
   const home = await driver.findElements(By.css('button.home-btn'));
   if (home.length && (await home[0].isDisplayed())) await home[0].click();
   // 主机卡片只在“主机”页显示：从其他页面（密钥串等）先切回主机页
@@ -161,7 +161,7 @@ try {
     if (overflow > 1) throw new Error(`终端超出容器 ${overflow}px，最后一行会被切掉`);
     // 沉浸模式：连上后侧边栏隐藏，终端几乎占满窗口宽度
     const layout = await driver.executeScript(`
-      const aside = document.querySelector('aside');
+      const aside = document.querySelector('aside.sb');
       const stage = document.querySelector('.stage').getBoundingClientRect();
       return { aside: !!aside, ratio: stage.width / window.innerWidth };`);
     if (layout.aside || layout.ratio < 0.98) throw new Error(`没有进入全屏终端：${JSON.stringify(layout)}`);
@@ -191,6 +191,26 @@ try {
       .perform();
     await driver.wait(async () => !!(await driver.executeScript("return window.__TAURI_INTERNALS__.invoke('clipboard_read');")), 5000, '选中后没有复制到剪贴板');
     await shot('copy-on-select');
+  });
+
+  await check('外观面板：切换配色、调整字号并立即生效', async () => {
+    await click(By.xpath('//button[@title="终端外观"]'));
+    await find(By.css('aside[aria-label="终端外观"]'));
+    await click(By.css('aside[aria-label="终端外观"] button[aria-label="Dracula"]'));
+    // 终端（含四周留白）背景换成 Dracula 的 #282A36
+    await driver.wait(
+      async () => (await driver.executeScript(`return getComputedStyle(document.querySelector('div[role="application"]')).backgroundColor;`)) === 'rgb(40, 42, 54)',
+      5000,
+      '终端背景没有变成 Dracula 配色',
+    );
+    const size = () => driver.executeScript(`return JSON.parse(localStorage.getItem('vornel.prefs') || '{}').terminalFontSize;`);
+    const before = await size();
+    await click(By.css('aside[aria-label="终端外观"] button[aria-label="增大字号"]'));
+    await driver.wait(async () => (await size()) === before + 1, 5000, '字号没有变化');
+    await shot('appearance-panel');
+    await click(By.xpath('//aside[@aria-label="终端外观"]//button[contains(., "恢复默认")]'));
+    await driver.wait(async () => (await size()) === 13, 5000, '恢复默认后字号不是 13');
+    await click(By.css('button[aria-label="关闭外观面板"]'));
   });
 
   await check('右键菜单：终端粘贴、标签复制会话', async () => {
@@ -330,6 +350,9 @@ try {
     await addHost({ address: '127.0.0.1', port: env('SSH_PORT'), name: 'e2e-saved', user: env('SSH_USER'), password: env('SSH_PASS'), newGroup: 'e2e-group' });
     // 主机页出现新分组卡片，点进去能看到这台主机
     await click(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-group")][contains(., "1 台主机")]'));
+    // 等分组页切换完成（面包屑出现、卡片动画结束）再点主机，否则可能点到正在替换的旧元素
+    await find(By.xpath('//section[@aria-label="主机列表"]//nav[@aria-label="当前位置"][contains(., "e2e-group")]'));
+    await new Promise((r) => setTimeout(r, 400));
     await click(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-saved")]'));
     await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 30000);
     const prompts = await driver.findElements(By.xpath('//div[@role="application"]//input[@type="password"]'));
@@ -383,6 +406,24 @@ try {
     await click(By.css('dialog button[aria-label="隐藏密码"]'));
     if ((await pw.getAttribute('type')) !== 'password') throw new Error('再次点击后没有隐藏');
     await driver.actions().sendKeys(Key.ESCAPE).perform();
+  });
+  await check('搜索后连接，回到主机页搜索结果仍在', async () => {
+    await click(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'));
+    const bar = await find(By.css('section[aria-label="主机列表"] input[aria-label="搜索主机"]'));
+    // 直接设值：用 Ctrl+A 清空时驱动偶尔不松开 Ctrl，后面的 v 会变成粘贴
+    await driver.executeScript('const el = arguments[0]; el.focus(); el.value = arguments[1]; el.dispatchEvent(new Event("input", { bubbles: true }));', bar, 'e2e-sav');
+    await click(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-saved")]'));
+    await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 30000);
+    await click(By.css('button.home-btn'));
+    const again = await find(By.css('section[aria-label="主机列表"] input[aria-label="搜索主机"]'));
+    const value = await again.getAttribute('value');
+    if (value !== 'e2e-sav') throw new Error(`回到主机页后搜索词变成了“${value}”`);
+    await find(By.xpath('//section[@aria-label="主机列表"]//h2[contains(., "搜索结果")]'));
+    await find(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-saved")]'));
+    await shot('search-kept');
+    // 再点一次侧边栏“主机”：清空搜索、回到全部主机
+    await (await driver.findElement(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'))).click();
+    await driver.wait(async () => (await again.getAttribute('value')) === '', 5000, '再点“主机”后搜索没有清空');
   });
 } finally {
   await driver.quit().catch(() => {});

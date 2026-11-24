@@ -40,7 +40,7 @@ async function find(locator, timeout = 20000) {
 // 沉浸模式下侧边栏是隐藏的：要点侧边栏里的东西时，先点标签栏的“主机”按钮把它调出来（用户的真实操作路径）
 async function showSidebarIfNeeded(locator) {
   const q = String(locator.value ?? locator);
-  if (!/aside|主导航|新建主机|"设置"|主机列表/.test(q)) return;
+  if (!/\/\/aside\/\/|主导航|新建主机|"设置"|主机列表/.test(q)) return;
   const home = await driver.findElements(By.css('button.home-btn'));
   if (home.length && (await home[0].isDisplayed())) await home[0].click();
   // 主机卡片只在“主机”页显示：从其他页面（密钥串等）先切回主机页

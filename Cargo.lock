@@ -7614,7 +7614,7 @@ dependencies = [
 
 [[package]]
 name = "vornel"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "arboard",
  "fontdb",
@@ -7642,7 +7642,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-core"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "serde",
  "serde_json",
@@ -7651,7 +7651,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-mosh"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "aes 0.9.4",
  "base64 0.23.1",
@@ -7663,7 +7663,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-remote"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "base64 0.23.1",
  "ironrdp-connector",
@@ -7683,7 +7683,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-ssh"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "getrandom 0.4.3",
  "russh",
@@ -7695,7 +7695,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-sync"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "base64 0.23.1",
  "getrandom 0.4.3",
@@ -7716,7 +7716,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-term"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "serialport",
  "thiserror 2.0.21",
@@ -7725,7 +7725,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-vault"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "argon2",
  "base64 0.23.1",

@@ -15,6 +15,10 @@ const DEFAULT_PREFS: Prefs = {
   screenReader: false,
   copyOnSelect: true,
   groupStyles: {},
+  terminalTheme: 'auto',
+  terminalLineHeight: null,
+  cursorStyle: 'block',
+  cursorBlink: true,
 };
 
 function cachedPrefs(): Prefs {

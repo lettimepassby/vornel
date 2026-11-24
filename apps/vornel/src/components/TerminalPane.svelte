@@ -21,7 +21,8 @@
   import { copyText } from '../lib/clipboard';
 
   const isMac = /Macintosh|Mac OS X|iPhone|iPad/.test(navigator.userAgent);
-  import { badge, TERMINAL_THEMES, type BadgeKind } from '../lib/themes';
+  import { badge, type BadgeKind } from '../lib/themes';
+  import { resolveScheme } from '../lib/terminal-schemes';
 
   let {
     host,
@@ -67,6 +68,8 @@
   let firstInput = $state<HTMLInputElement>();
 
   const terminalProtocols = ['ssh', 'mosh', 'telnet', 'serial'];
+  /** 终端四周留白也用配色的背景色，避免换了配色后出现一圈界面底色 */
+  const paneBg = $derived(resolveScheme(prefs.terminalTheme, prefs.theme).theme.background);
 
   function setStatus(s: PaneStatus) {
     pane = s;
@@ -79,7 +82,7 @@
   }
 
   function line(kind: BadgeKind, label: string, text: string) {
-    term?.write(badge(prefs.theme, kind, label, text));
+    term?.write(badge(resolveScheme(prefs.terminalTheme, prefs.theme).dark ? 'ink' : 'paper', kind, label, text));
   }
 
   /** 把文字发送到终端（代码片段等）。 */
@@ -196,8 +199,10 @@
     await ensureFamily(family);
     term.options.fontFamily = familyStack(family, 'monospace');
     term.options.fontSize = prefs.terminalFontSize;
-    term.options.lineHeight = pack.lineHeight;
-    term.options.theme = TERMINAL_THEMES[prefs.theme];
+    term.options.lineHeight = prefs.terminalLineHeight ?? pack.lineHeight;
+    term.options.theme = resolveScheme(prefs.terminalTheme, prefs.theme).theme;
+    term.options.cursorStyle = prefs.cursorStyle;
+    term.options.cursorBlink = prefs.cursorBlink;
     term.options.screenReaderMode = prefs.screenReader;
     webgl?.clearTextureAtlas();
     refit();
@@ -227,9 +232,10 @@
       term = new Terminal({
         fontFamily: familyStack(family, 'monospace'),
         fontSize: untrack(() => prefs.terminalFontSize),
-        lineHeight: pack.lineHeight,
-        theme: TERMINAL_THEMES[untrack(() => prefs.theme)],
-        cursorBlink: true,
+        lineHeight: untrack(() => prefs.terminalLineHeight) ?? pack.lineHeight,
+        theme: untrack(() => resolveScheme(prefs.terminalTheme, prefs.theme).theme),
+        cursorStyle: untrack(() => prefs.cursorStyle),
+        cursorBlink: untrack(() => prefs.cursorBlink),
         scrollback: 10000,
         macOptionIsMeta: true,
         screenReaderMode: untrack(() => prefs.screenReader),
@@ -313,6 +319,10 @@
     void prefs.terminalFontSize;
     void prefs.fontOverrides.terminal;
     void prefs.screenReader;
+    void prefs.terminalTheme;
+    void prefs.terminalLineHeight;
+    void prefs.cursorStyle;
+    void prefs.cursorBlink;
     void applyAppearance();
   });
 
@@ -341,7 +351,7 @@
   });
 </script>
 
-<div class="pane" role="application" aria-label="终端 {host.name}">
+<div class="pane" role="application" aria-label="终端 {host.name}" style:background={paneBg}>
   <div class="term" bind:this={container}></div>
 
   {#if pane.state === 'auth' || pane.state === 'error' || pane.state === 'closed'}

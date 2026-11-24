@@ -28,9 +28,11 @@
   import HostsView from './views/HostsView.svelte';
   import WindowControls from './components/WindowControls.svelte';
   import ContextMenu from './components/ContextMenu.svelte';
+  import AppearancePanel from './components/AppearancePanel.svelte';
   import { ask as askDialog } from '@tauri-apps/plugin-dialog';
   import { mod, openMenu, type MenuItem } from './lib/contextmenu.svelte';
   import { copyText, readText } from './lib/clipboard';
+  import { resetHostsView } from './lib/hostsview.svelte';
 
   interface Tab {
     key: string;
@@ -69,6 +71,8 @@
   let settingsTab = $state<'appearance' | 'sync' | null>(null);
   let searchInput = $state<HTMLInputElement>();
   let snippetMenu = $state(false);
+  /** 会话右侧的终端外观面板 */
+  let showStyle = $state(false);
   type PaneApi = {
     send: (text: string) => void;
     setCtrl: (on: boolean) => void;
@@ -385,6 +389,8 @@
       {counts}
       {sync}
       onview={(v) => {
+        // 已经在主机页时再点“主机”：清空搜索、回到全部主机
+        if (v === 'hosts' && view === 'hosts' && !showSession) resetHostsView();
         view = v;
         if (v === 'hosts') showSession = false;
       }}
@@ -434,7 +440,8 @@
           onclose={closeTab}
           oncontext={tabMenu}
         />
-        {#if activeTab && view === 'hosts' && isTerminal(activeTab.host)}
+        <!-- 片段 / SFTP / 外观 只在看着会话时显示 -->
+        {#if activeTab && view === 'hosts' && showSession && isTerminal(activeTab.host)}
           <div class="tools">
             <div class="snip">
               <button class="btn ghost" type="button" aria-expanded={snippetMenu} onclick={() => (snippetMenu = !snippetMenu)} disabled={!data.snippets.length}>
@@ -459,6 +466,9 @@
                 <Icon name="folder" size={14} />SFTP
               </button>
             {/if}
+            <button class="btn ghost" class:on={showStyle} type="button" aria-pressed={showStyle} title="终端外观" onclick={() => (showStyle = !showStyle)}>
+              <Icon name="palette" size={14} />外观
+            </button>
           </div>
         {/if}
         {#if isWindows}<WindowControls />{/if}
@@ -503,6 +513,9 @@
             </div>
             {#if t.sftp && t.status.sessionId}
               <div class="sftp-area"><SftpPanel sessionId={t.status.sessionId} onclose={() => (t.sftp = false)} /></div>
+            {/if}
+            {#if showStyle && t.key === activeKey && isTerminal(t.host)}
+              <AppearancePanel onclose={() => (showStyle = false)} />
             {/if}
           </div>
         {/each}
