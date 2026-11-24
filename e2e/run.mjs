@@ -436,25 +436,49 @@ try {
     await shot('server-stats');
   });
 
-  await check('分屏 + 同步输入', async () => {
+  await check('分屏：选择会话 + 同步输入', async () => {
     await click(By.xpath('//button[@title="分屏"]'));
-    await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][contains(., "左右两屏")]'));
+    await find(By.xpath('//dialog//h2[contains(., "分屏")]'));
+    await shot('split-picker');
+    // 从“已打开的会话”里选 e2e-ssh，左右分屏，开启同步输入
+    await click(By.xpath('(//dialog//div[@aria-label="已打开的会话"]//label[contains(., "e2e-ssh")])[1]'));
+    await click(By.xpath('//dialog//div[@aria-label="分屏方向"]/button[normalize-space(.)="左右"]'));
+    await click(By.xpath('//dialog//label[contains(., "同步输入")]//input'));
+    await click(By.xpath('//dialog//button[contains(., "开始分屏")]'));
     await driver.wait(async () => (await driver.findElements(By.css('.ws.split'))).length === 2, 10000, '没有出现两个分屏窗格');
-    // 两个窗格并排可见
     const rects = await driver.executeScript(`return [...document.querySelectorAll('.ws.split')].map((w) => { const r = w.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.width), getComputedStyle(w).visibility]; });`);
     if (!(rects[0][0] !== rects[1][0] && rects.every((r) => r[2] === 'visible' && r[1] > 200))) throw new Error(`分屏布局不对：${JSON.stringify(rects)}`);
-    await click(By.xpath('//button[@title="分屏"]'));
-    await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][contains(., "开启同步输入")]'));
     await find(By.xpath('//button[contains(., "同步输入中")]'));
     await click(By.css('.ws.split.focus .xterm-screen'));
     await typeKeys('printf bc-; seq 5 5');
-    // 两个会话都执行了这条命令
     await driver.wait(async () => ((await terminalText()).match(/^bc-5$/gm) || []).length >= 2, 20000, '同步输入没有发到两个会话');
     await shot('split-broadcast');
+    // 再点“分屏”：可以退出
     await click(By.xpath('//button[@title="分屏"]'));
-    await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][contains(., "退出分屏")]'));
+    await click(By.xpath('//dialog//button[contains(., "退出分屏")]'));
     await driver.wait(async () => (await driver.findElements(By.css('.ws.split'))).length === 0, 5000, '退出分屏失败');
   });
+
+  await check('会话标签：右键临时重命名、拖动调整顺序', async () => {
+    const names = () => driver.executeScript(`return [...document.querySelectorAll('div[role="tablist"] .tab .name')].map((n) => n.textContent.trim());`);
+    await driver.actions().contextClick(await find(By.css('div[role="tablist"] .tab.on .label'))).perform();
+    await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][contains(., "重命名")]'));
+    const input = await find(By.css('div[role="tablist"] input[aria-label="重命名标签"]'));
+    await input.sendKeys(Key.chord(Key.CONTROL, 'a'));
+    await input.sendKeys(Key.BACK_SPACE);
+    for (const ch of 'prod-a') await input.sendKeys(ch);
+    await input.sendKeys(Key.ENTER);
+    await driver.wait(async () => (await names()).includes('prod-a'), 5000, '重命名后标签没有变化');
+    // 主机本身的名字不变
+    if ((await driver.findElements(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "prod-a")]'))).length) throw new Error('临时重命名改掉了主机名称');
+    // 拖动第一个标签到第二个之后
+    const before = await names();
+    const tabsEls = await driver.findElements(By.css('div[role="tablist"] .tab .label'));
+    await driver.actions().move({ origin: tabsEls[0] }).press().move({ origin: tabsEls[0], x: 12 }).move({ origin: tabsEls[1], x: 30 }).release().perform();
+    await driver.wait(async () => (await names())[1] === before[0], 5000, `拖动后顺序没有变化：${JSON.stringify(before)}`);
+    await shot('tabs-reordered');
+  });
+
   await check('新建主机排在最前；保存的密码错误时弹出输入框，改正后保存', async () => {
     await click(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'));
     await addHost({ address: '127.0.0.1', port: env('SSH_PORT'), name: 'e2e-badpw', user: env('SSH_USER'), password: 'wrong-pass-1' });
