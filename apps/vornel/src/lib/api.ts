@@ -84,6 +84,7 @@ export interface Prefs {
   fontOverrides: Record<string, string>;
   syncSecrets: boolean;
   screenReader: boolean;
+  copyOnSelect: boolean;
 }
 
 export const PROTOCOL_PORTS: Record<Protocol, number> = {
@@ -289,3 +290,15 @@ export function formatTime(secs: number | null): string {
     ? `${pad(d.getHours())}:${pad(d.getMinutes())}`
     : `${d.getFullYear() === now.getFullYear() ? '' : d.getFullYear() + '-'}${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
+
+export interface ImportReport {
+  hosts: number;
+  keys: number;
+  passwords: number;
+  snippets: number;
+  knownHosts: number;
+  skipped: number;
+  errors: string[];
+}
+/** 从 Vornel 导入文件（JSON）导入主机、密钥、片段、已知主机 */
+export const importFile = (path: string) => invoke<ImportReport>('import_file', { path });

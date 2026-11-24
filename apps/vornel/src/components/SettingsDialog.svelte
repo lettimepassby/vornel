@@ -10,6 +10,7 @@
   import Dialog from './Dialog.svelte';
   import FontAddons from './FontAddons.svelte';
   import Icon from './Icon.svelte';
+  import { copyText } from '../lib/clipboard';
 
   let { onclose, initialTab = 'appearance' }: { onclose: () => void; initialTab?: Tab } = $props();
 
@@ -79,6 +80,26 @@
   let masterPw = $state('');
   let masterPw2 = $state('');
   let needPw = $state<'new' | 'existing' | null>(null);
+  /** 本机已加入云端同步库（之后才能修改主密码） */
+  let joined = $state(false);
+  let copied = $state(false);
+
+  /** 查询云端状态：需要设置 / 输入主密码时直接显示密码框 */
+  async function refreshCheck() {
+    try {
+      const c = await api.syncCheck();
+      needPw = c.needPassword === null ? null : c.needPassword ? 'new' : 'existing';
+      joined = c.configured && c.needPassword === null;
+    } catch {
+      joined = false;
+    }
+  }
+
+  async function copyError() {
+    await copyText(syncErr);
+    copied = true;
+    setTimeout(() => (copied = false), 1500);
+  }
 
   $effect(() => {
     void api.syncGetConfig().then((c) => {
@@ -86,6 +107,7 @@
       if (c) {
         backendType = c.type;
         Object.assign(form, c);
+        void refreshCheck();
       }
     });
   });
@@ -121,13 +143,21 @@
   async function saveBackend() {
     syncErr = '';
     syncMsg = '';
+    syncBusy = true;
     try {
       const c = buildConfig();
       await api.syncSetConfig(c);
       cfg = c;
-      syncMsg = '已保存。点击“立即同步”开始。';
+      await refreshCheck();
+      syncMsg = needPw === 'new'
+        ? '连接测试通过。请设置主密码，然后点击“立即同步”。'
+        : needPw === 'existing'
+          ? '连接测试通过，云端已有同步库。请输入主密码后点击“立即同步”。'
+          : '连接测试通过，已保存。';
     } catch (e) {
       syncErr = api.errorText(e);
+    } finally {
+      syncBusy = false;
     }
   }
 
@@ -138,7 +168,8 @@
     try {
       const provider = backendType === 'gdrive' ? 'google' : backendType === 'oneDrive' ? 'microsoft' : 'dropbox';
       cfg = await api.syncOAuth(provider, form.clientId, form.clientSecret);
-      syncMsg = '授权成功。点击“立即同步”开始。';
+      await refreshCheck();
+      syncMsg = needPw === 'new' ? '授权成功。请设置主密码，然后点击“立即同步”。' : '授权成功。点击“立即同步”开始。';
     } catch (e) {
       syncMsg = '';
       syncErr = api.errorText(e);
@@ -150,6 +181,8 @@
   async function disconnect() {
     await api.syncSetConfig(null);
     cfg = null;
+    joined = false;
+    needPw = null;
     syncMsg = '已断开同步，本机数据保留。';
   }
 
@@ -168,6 +201,7 @@
     try {
       const r = await api.syncNow(needPw ? masterPw : undefined);
       needPw = null;
+      joined = true;
       masterPw = masterPw2 = '';
       syncMsg = `${r.created ? '已创建云端同步库。' : ''}${r.joined ? '已加入已有的同步库。' : ''}拉取 ${r.pulled} 条，推送 ${r.pushed} 条。`;
       await loadAll();
@@ -198,6 +232,27 @@
       pwMsg = '已修改。已加入的设备不受影响，之后新加入的设备请使用新密码。';
     } catch (e) {
       pwMsg = api.errorText(e);
+    }
+  }
+
+  // ---------------------------------------------------------------- 导入
+  let importMsg = $state('');
+  let importErr = $state('');
+  let importBusy = $state(false);
+  async function importData() {
+    importMsg = importErr = '';
+    const file = await openDialog({ title: '选择导入文件', filters: [{ name: 'Vornel 导入文件', extensions: ['json'] }] });
+    if (typeof file !== 'string') return;
+    importBusy = true;
+    try {
+      const r = await api.importFile(file);
+      importMsg = `已导入主机 ${r.hosts} 台（保存密码 ${r.passwords} 个）、密钥 ${r.keys} 把、代码片段 ${r.snippets} 条、已知主机 ${r.knownHosts} 条${r.skipped ? `；${r.skipped} 条已存在，已跳过` : ''}。`;
+      if (r.errors.length) importErr = `以下条目没有导入：\n${r.errors.join('\n')}`;
+      await loadAll();
+    } catch (e) {
+      importErr = api.errorText(e);
+    } finally {
+      importBusy = false;
     }
   }
 
@@ -287,6 +342,11 @@
       </div>
 
       <label class="check big">
+        <input type="checkbox" bind:checked={prefs.copyOnSelect} />
+        <span><b>选中即复制</b><br /><span class="sub">在终端里用鼠标选中文字后自动复制到剪贴板。关闭后可用 ⌘C（Windows 为 Ctrl+Shift+C）复制。</span></span>
+      </label>
+
+      <label class="check big">
         <input type="checkbox" bind:checked={prefs.screenReader} />
         <span><b>屏幕阅读器模式</b><br /><span class="sub">让 VoiceOver / 讲述人可以朗读终端内容。终端字号也可以用 ⌘+ / ⌘− / ⌘0 调整。</span></span>
       </label>
@@ -351,7 +411,12 @@
         </div>
       {/if}
 
-      {#if syncErr}<p class="error-box">{syncErr}</p>{/if}
+      {#if syncErr}
+        <div class="error-box selectable">
+          <p>{syncErr}</p>
+          <button class="btn ghost copy" type="button" onclick={copyError}>{copied ? '已复制' : '复制错误信息'}</button>
+        </div>
+      {/if}
       {#if syncMsg}<p class="ok">{syncMsg}</p>{/if}
 
       <div class="dialog-actions">
@@ -360,14 +425,14 @@
         {#if isOAuth}
           <button class="btn ghost" type="button" onclick={authorize} disabled={syncBusy}>授权</button>
         {:else}
-          <button class="btn ghost" type="button" onclick={saveBackend}>保存</button>
+          <button class="btn ghost" type="button" onclick={saveBackend} disabled={syncBusy}>{syncBusy ? '正在测试连接…' : '保存并测试'}</button>
         {/if}
         <button class="btn" type="button" onclick={syncNow} disabled={!cfg || syncBusy}>
           <Icon name="refresh" size={14} />{syncBusy ? '同步中…' : '立即同步'}
         </button>
       </div>
 
-      {#if cfg && !needPw}
+      {#if cfg && joined && !needPw}
         <div class="block">
           <b>修改主密码</b>
           <span class="sub">只会用新密码重新加密数据密钥，数据本身不变；已加入的设备不需要重新输入。</span>
@@ -376,7 +441,7 @@
             <input class="input grow" type="password" bind:value={newPw2} placeholder="再输入一次" />
             <button class="btn ghost" type="button" onclick={changePassword} disabled={!newPw}>修改</button>
           </div>
-          {#if pwMsg}<p class="sub">{pwMsg}</p>{/if}
+          {#if pwMsg}<p class="sub selectable">{pwMsg}</p>{/if}
         </div>
       {/if}
     </section>
@@ -386,6 +451,13 @@
         <input type="checkbox" bind:checked={prefs.syncSecrets} />
         <span><b>同步保存的密码</b><br /><span class="sub">开启后，保存在 Vault 中的主机密码也会加密上传到云端。私钥是否同步在“密钥串”中单独设置。</span></span>
       </label>
+      <div class="block">
+        <b>导入数据</b>
+        <span class="sub">从 Vornel 导入文件（JSON）导入主机、保存的密码、密钥、代码片段和已知主机。已存在的条目会自动跳过，可以重复导入。</span>
+        <div><button class="btn ghost" type="button" onclick={importData} disabled={importBusy}>{importBusy ? '正在导入…' : '从文件导入…'}</button></div>
+        {#if importMsg}<p class="ok selectable">{importMsg}</p>{/if}
+        {#if importErr}<p class="error-box">{importErr}</p>{/if}
+      </div>
       <div class="block">
         <b>本机 Vault</b>
         <span class="sub">

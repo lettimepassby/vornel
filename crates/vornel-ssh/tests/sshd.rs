@@ -217,3 +217,71 @@ async fn wrong_key_is_rejected() {
     };
     assert!(matches!(connect(opts(ep)).await, Err(SshError::AuthFailed)));
 }
+
+#[tokio::test]
+#[ignore]
+async fn jump_host_proxy_jump() {
+    // 跳板机和目标都是同一台 sshd：目标连接经跳板机的 direct-tcpip 通道建立
+    let (conn, keys) = connect(ConnectOptions {
+        target: endpoint(vec![]),
+        jump: Some(endpoint(vec![])),
+        agent_forward: false,
+    })
+    .await
+    .unwrap();
+    assert_eq!(keys.len(), 2, "应分别校验跳板机与目标的主机密钥");
+    let (out, code) = conn.exec("echo via-jump").await.unwrap();
+    assert_eq!(code, Some(0));
+    assert!(String::from_utf8_lossy(&out).contains("via-jump"));
+    conn.disconnect().await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn remote_forwarding() {
+    // 本机起一个服务；远端（同一台机器）监听端口 → 经 SSH 回到本机服务
+    let svc = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let svc_port = svc.local_addr().unwrap().port();
+    tokio::spawn(async move {
+        while let Ok((mut s, _)) = svc.accept().await {
+            let _ = s.write_all(b"hello-from-local\n").await;
+        }
+    });
+    let (conn, _) = connect(opts(endpoint(vec![]))).await.unwrap();
+    let conn = Arc::new(conn);
+    let fwd = conn
+        .remote_forward("127.0.0.1", 0, "127.0.0.1".into(), svc_port)
+        .await
+        .unwrap();
+    assert_ne!(fwd.bound_port, 0);
+    let got = read_banner(
+        TcpStream::connect(("127.0.0.1", fwd.bound_port))
+            .await
+            .unwrap(),
+    )
+    .await;
+    assert!(got.starts_with("hello-from-local"), "远程转发读到：{got}");
+    conn.stop_forward(fwd).await;
+    conn.disconnect().await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn agent_auth_and_forwarding() {
+    // 需要 SSH_AUTH_SOCK 指向已加载测试私钥的 ssh-agent
+    let mut ep = endpoint(vec![]);
+    ep.auth = Auth::Agent;
+    let (conn, _) = connect(ConnectOptions {
+        target: ep,
+        jump: None,
+        agent_forward: true,
+    })
+    .await
+    .unwrap();
+    // 远端通过转发过来的 Agent 能看到本机 Agent 里的密钥
+    let (out, code) = conn.exec("ssh-add -l").await.unwrap();
+    let out = String::from_utf8_lossy(&out);
+    assert_eq!(code, Some(0), "远端 ssh-add -l 失败：{out}");
+    assert!(out.contains("vornel-test"), "远端看不到转发的密钥：{out}");
+    conn.disconnect().await;
+}

@@ -58,6 +58,40 @@ pub fn import(pem: &str, passphrase: Option<&str>) -> Result<KeyInfo, SshError> 
     }
 }
 
+/// 导入私钥并去掉口令保护：用于从其他客户端迁移（它们已经保存了口令）。
+/// 私钥之后保存在加密的 Vault 里，连接时不再需要输入口令。
+pub fn import_decrypted(pem: &str, passphrase: Option<&str>) -> Result<KeyInfo, SshError> {
+    let pem = pem.trim().to_string() + "\n";
+    let key = match decode_secret_key(&pem, None) {
+        Ok(k) => k,
+        Err(russh::keys::Error::KeyIsEncrypted) => {
+            decode_secret_key(&pem, Some(passphrase.ok_or(SshError::NeedPassphrase)?))?
+        }
+        Err(e) => return Err(e.into()),
+    };
+    let plain = key
+        .to_openssh(LineEnding::LF)
+        .map_err(|e| SshError::Other(e.to_string()))?
+        .to_string();
+    info(&key, plain, false)
+}
+
+/// 解析一行 OpenSSH 公钥（`类型 base64 [注释]`），返回（算法，SHA256 指纹，去掉注释后的公钥）。
+pub fn public_key_info(line: &str) -> Result<(String, String, String), SshError> {
+    let key = russh::keys::PublicKey::from_openssh(line.trim())
+        .map_err(|e| SshError::Other(format!("无法解析公钥：{e}")))?;
+    let mut bare = key.clone();
+    bare.set_comment("");
+    Ok((
+        key.algorithm().as_str().to_string(),
+        key.fingerprint(HashAlg::Sha256).to_string(),
+        bare.to_openssh()
+            .map_err(|e| SshError::Other(e.to_string()))?
+            .trim()
+            .to_string(),
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -71,6 +105,18 @@ mod tests {
         assert!(k.fingerprint.starts_with("SHA256:"));
         let again = import(&k.private_key, None).unwrap();
         assert_eq!(again.fingerprint, k.fingerprint);
+    }
+
+    #[test]
+    fn decrypted_import_and_public_key_info() {
+        let k = generate_ed25519("x").unwrap();
+        let again = import_decrypted(&k.private_key, None).unwrap();
+        assert!(!again.encrypted);
+        assert_eq!(again.fingerprint, k.fingerprint);
+        let (alg, fp, bare) = public_key_info(&k.public_key).unwrap();
+        assert_eq!(alg, "ssh-ed25519");
+        assert_eq!(fp, k.fingerprint);
+        assert!(!bare.ends_with(" x"));
     }
 
     #[test]

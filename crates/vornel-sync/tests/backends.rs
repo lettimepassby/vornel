@@ -70,3 +70,40 @@ async fn sync_via_webdav() {
     })
     .await;
 }
+
+#[tokio::test]
+#[ignore]
+async fn s3_probe_and_friendly_errors() {
+    init_tls();
+    let cfg = |secret: String, bucket: String| BackendConfig::S3 {
+        endpoint: env("VORNEL_TEST_S3_ENDPOINT"),
+        bucket,
+        region: "us-east-1".into(),
+        access_key_id: env("VORNEL_TEST_S3_KEY"),
+        secret_access_key: secret,
+        root: format!("probe-{}", uuid::Uuid::new_v4()),
+    };
+    // 正确配置：读写删都通过，且不留下测试文件
+    let good = cfg(env("VORNEL_TEST_S3_SECRET"), env("VORNEL_TEST_S3_BUCKET"));
+    let op = good.operator().unwrap();
+    vornel_sync::probe(&op).await.unwrap();
+    assert!(!op.exists(".vornel-probe").await.unwrap());
+
+    // 错误的 Secret：提示签名校验失败
+    let bad = cfg("wrong-secret-0000".into(), env("VORNEL_TEST_S3_BUCKET"));
+    let msg = vornel_sync::probe(&bad.operator().unwrap())
+        .await
+        .unwrap_err()
+        .to_string();
+    println!("{msg}");
+    assert!(msg.contains("Secret Access Key"), "{msg}");
+
+    // 不存在的存储桶
+    let nb = cfg(env("VORNEL_TEST_S3_SECRET"), "no-such-bucket-vornel".into());
+    let msg = vornel_sync::probe(&nb.operator().unwrap())
+        .await
+        .unwrap_err()
+        .to_string();
+    println!("{msg}");
+    assert!(msg.contains("存储桶不存在"), "{msg}");
+}

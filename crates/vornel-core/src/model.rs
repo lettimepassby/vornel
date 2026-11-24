@@ -348,6 +348,13 @@ pub struct Prefs {
     /// 终端屏幕阅读器模式（xterm.js screenReaderMode）
     #[serde(default)]
     pub screen_reader: bool,
+    /// 终端里选中文字后自动复制到剪贴板
+    #[serde(default = "default_true")]
+    pub copy_on_select: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 fn default_theme() -> String {
@@ -370,6 +377,7 @@ impl Default for Prefs {
             font_overrides: Default::default(),
             sync_secrets: false,
             screen_reader: false,
+            copy_on_select: true,
         }
     }
 }
