@@ -36,6 +36,8 @@ export interface Host {
   os?: string | null;
   /** 最近一次连接成功的时间（毫秒） */
   lastConnected?: number | null;
+  /** 创建时间（毫秒） */
+  createdAt?: number | null;
 }
 
 export interface Key {
@@ -291,6 +293,7 @@ export function blankHost(): Host {
     domain: null,
     os: null,
     lastConnected: null,
+    createdAt: Date.now(),
   };
 }
 

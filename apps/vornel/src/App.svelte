@@ -29,6 +29,7 @@
   import WindowControls from './components/WindowControls.svelte';
   import ContextMenu from './components/ContextMenu.svelte';
   import AppearancePanel from './components/AppearancePanel.svelte';
+  import SplitDialog from './components/SplitDialog.svelte';
   import { ask as askDialog } from '@tauri-apps/plugin-dialog';
   import { mod, openMenu, type MenuItem } from './lib/contextmenu.svelte';
   import { copyText, readText } from './lib/clipboard';
@@ -40,6 +41,8 @@
     host: Host;
     status: PaneStatus;
     sftp: boolean;
+    /** 临时名称（只对这个会话有效，不改主机设置） */
+    title?: string;
   }
 
   // macOS 使用 Overlay 标题栏，红绿灯落在侧边栏左上角，需要留出位置
@@ -202,15 +205,17 @@
   /** 当前标签所在的分屏组（当前标签不在组里时不显示分屏） */
   const splitKeys = $derived(split && activeKey && split.keys.includes(activeKey) ? split.keys : null);
 
-  function startSplit(layout: Layout) {
-    const cur = activeTab;
-    if (!cur || !activeKey) return;
-    const n = layout === 'grid' ? 4 : 2;
-    // 优先使用已经打开的其他终端标签，不够再复制当前主机
-    const others = tabs.filter((t) => t.key !== activeKey && isTerminal(t.host)).map((t) => t.key);
-    const keys = [activeKey, ...others].slice(0, n);
-    while (keys.length < n) keys.push(addTab(cur.host));
-    vt(() => (split = { keys, layout, broadcast: split?.broadcast ?? false }));
+  /** 正在重命名的标签 */
+  let renamingTab = $state<string | null>(null);
+
+  /** 分屏选择窗口 */
+  let splitPicker = $state(false);
+
+  function applySplit(r: { tabKeys: string[]; hosts: Host[]; layout: Layout; broadcast: boolean }) {
+    if (!activeKey) return;
+    const keys = [activeKey, ...r.tabKeys.filter((k) => k !== activeKey), ...r.hosts.map((h) => addTab(h))].slice(0, 4);
+    splitPicker = false;
+    vt(() => (split = { keys, layout: keys.length > 2 ? 'grid' : r.layout, broadcast: r.broadcast }));
   }
 
   function endSplit() {
@@ -234,21 +239,7 @@
     for (const k of split.keys) if (k !== from) panes[k]?.write(data);
   }
 
-  function splitMenu(e: MouseEvent) {
-    openMenu(e, [
-      { label: '左右两屏', icon: 'split', action: () => startSplit('cols') },
-      { label: '上下两屏', icon: 'split', action: () => startSplit('rows') },
-      { label: '四宫格', icon: 'group', action: () => startSplit('grid') },
-      'sep',
-      {
-        label: split?.broadcast ? '关闭同步输入' : '开启同步输入（输入发送到所有分屏）',
-        icon: 'send',
-        disabled: !splitKeys,
-        action: () => split && (split.broadcast = !split.broadcast),
-      },
-      { label: '退出分屏', icon: 'close', disabled: !split, action: endSplit },
-    ]);
-  }
+
 
   /** 搜索框里输入 ssh user@host：保存为一台新主机（同地址同用户的已有主机直接复用）并连接 */
   async function quickConnect(t: { username: string; address: string; port: number }) {
@@ -313,6 +304,7 @@
     const p = panes[key];
     openMenu(e, [
       { label: '重新连接', icon: 'refresh', disabled: !p?.canReconnect(), action: () => p?.reconnect() },
+      { label: '重命名…', icon: 'edit', action: () => (renamingTab = key) },
       { label: '复制会话', icon: 'copy', action: () => openTab(t.host) },
       'sep',
       { label: '关闭', icon: 'close', shortcut: mod('W'), action: () => closeTab(key) },
@@ -505,7 +497,7 @@
           </button>
         {/if}
         <TabBar
-          tabs={tabs.map((t) => ({ key: t.key, title: t.host.name, state: t.status.state, split: !!split?.keys.includes(t.key) }))}
+          tabs={tabs.map((t) => ({ key: t.key, title: t.title || t.host.name, state: t.status.state, split: !!split?.keys.includes(t.key) }))}
           activeKey={view === 'hosts' ? activeKey : null}
           onselect={(k) => {
             if (k === activeKey && view === 'hosts' && showSession) return;
@@ -521,6 +513,15 @@
           }}
           onclose={closeTab}
           oncontext={tabMenu}
+          bind:renaming={renamingTab}
+          onreorder={(from, to) => {
+            const [moved] = tabs.splice(from, 1);
+            tabs.splice(to, 0, moved);
+          }}
+          onrename={(key, title) => {
+            const t = tabs.find((x) => x.key === key);
+            if (t) t.title = title || undefined;
+          }}
         />
         <!-- 片段 / SFTP / 外观 只在看着会话时显示 -->
         {#if activeTab && view === 'hosts' && showSession && isTerminal(activeTab.host)}
@@ -552,7 +553,7 @@
               <button class="btn bc-chip" type="button" title="点击关闭同步输入" onclick={() => split && (split.broadcast = false)}>同步输入中</button>
             {/if}
             {#if !mobile}
-              <button class="btn ghost" class:on={!!splitKeys} type="button" title="分屏" onclick={splitMenu}>
+              <button class="btn ghost" class:on={!!splitKeys} type="button" title="分屏" onclick={() => (splitPicker = true)}>
                 <Icon name="split" size={14} />分屏
               </button>
             {/if}
@@ -583,7 +584,7 @@
           {/if}
         </div>
       {/if}
-      <div class="stage" class:focus={view === 'hosts' && !!activeTab} class:immersive>
+      <div class="stage" class:focus={view === 'hosts' && showSession && !!activeTab} class:immersive>
         {#each tabs as t (t.key)}
           {@const si = splitKeys ? splitKeys.indexOf(t.key) : -1}
           <div
@@ -593,7 +594,7 @@
             class:focus={si >= 0 && t.key === activeKey}
             class:bc={si >= 0 && split?.broadcast}
             style={si >= 0 && split ? paneStyle(si, splitKeys!.length, split.layout) : undefined}
-            onpointerdowncapture={() => si >= 0 && t.key !== activeKey && (activeKey = t.key)}
+            onmousedowncapture={() => si >= 0 && t.key !== activeKey && (activeKey = t.key)}
           >
             <div class="term-area" oncontextmenu={(e) => isTerminal(t.host) && terminalMenu(e, t)}>
               {#if isTerminal(t.host)}
@@ -650,7 +651,7 @@
             onconnect={openTab}
             onedit={(h) => (editing = { host: h, isNew: false })}
             ondelete={deleteHost}
-            onduplicate={(h) => (editing = { host: { ...$state.snapshot(h), id: crypto.randomUUID(), name: `${h.name} 副本`, savePassword: false }, isNew: true })}
+            onduplicate={(h) => (editing = { host: { ...$state.snapshot(h), id: crypto.randomUUID(), name: `${h.name} 副本`, savePassword: false, createdAt: Date.now(), lastConnected: null }, isNew: true })}
             onnew={(g) => (editing = { host: { ...api.blankHost(), group: g }, isNew: true })}
             onquick={quickConnect}
           />
@@ -683,7 +684,8 @@
         {/if}
       {:else}
         {#if !immersive}
-          <StatusBar host={view === 'hosts' ? (activeTab?.host ?? null) : null} status={view === 'hosts' ? (activeTab?.status ?? null) : null} />
+          <!-- 只有正在看会话时才显示会话信息；主机页显示主机数量 -->
+          <StatusBar host={view === 'hosts' && showSession ? (activeTab?.host ?? null) : null} status={view === 'hosts' && showSession ? (activeTab?.status ?? null) : null} hostCount={data.hosts.length} />
         {/if}
       {/if}
     </main>
@@ -692,6 +694,22 @@
 
 {#if editing}
   <HostDialog host={editing.host} isNew={editing.isNew} onsave={save} ondelete={remove} onclose={() => (editing = null)} />
+{/if}
+
+{#if splitPicker && activeTab}
+  <SplitDialog
+    current={activeTab.title || activeTab.host.name}
+    sessions={tabs.filter((t) => t.key !== activeKey && isTerminal(t.host)).map((t) => ({ key: t.key, title: t.title || t.host.name, host: t.host, state: t.status.state }))}
+    hosts={data.hosts}
+    initial={splitKeys && split ? split : null}
+    inSplit={!!splitKeys}
+    onconfirm={applySplit}
+    onexit={() => {
+      splitPicker = false;
+      endSplit();
+    }}
+    onclose={() => (splitPicker = false)}
+  />
 {/if}
 
 {#if settingsTab}
