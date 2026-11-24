@@ -212,6 +212,9 @@ try {
     }
     console.log(`  画面 ${stats.w}×${stats.h}，${stats.blue}/${stats.n} 个采样点为桌面底色`);
     // VNC 不用用户名，状态栏不应显示 SSH 默认的 root@
+    // 沉浸模式隐藏了状态栏：先回到带侧边栏的布局再检查
+    const home = await driver.findElements(By.css('button.home-btn'));
+    if (home.length && (await home[0].isDisplayed())) await home[0].click();
     const footer = await (await find(By.css('footer'))).getText();
     if (footer.includes('root@')) throw new Error(`VNC 状态栏显示了无关的用户名：${footer}`);
     await sleep(1000);
