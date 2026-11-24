@@ -38,11 +38,17 @@ jobs:
         run: |
           npm ci
           npx tauri icon app-icon.svg
-          npx tauri build --target aarch64-apple-darwin --bundles app --no-sign
+          npx tauri build --target aarch64-apple-darwin --bundles app
       - name: 检查本地网络权限说明已写入应用
         run: |
           APP=$(ls -d target/aarch64-apple-darwin/release/bundle/macos/*.app | head -1)
           plutil -extract NSLocalNetworkUsageDescription raw "$APP/Contents/Info.plist"
+          # 整个 .app 必须签名（ad-hoc 即可），标识符为 bundle id，Info.plist 绑定进签名：
+          # 否则 macOS 无法把“本地网络”权限与说明对应到这个应用，连局域网会报 No route to host
+          codesign -dv "$APP" 2>&1 | tee /tmp/cs.txt
+          grep -q "Identifier=com.lettimepassby.vornel" /tmp/cs.txt
+          grep -q "Info.plist entries=" /tmp/cs.txt
+          codesign --verify --deep --strict "$APP"
 
       - name: 启动并截图
         run: |
