@@ -27,6 +27,10 @@
   import SnippetsView from './views/SnippetsView.svelte';
   import HostsView from './views/HostsView.svelte';
   import WindowControls from './components/WindowControls.svelte';
+  import ContextMenu from './components/ContextMenu.svelte';
+  import { ask as askDialog } from '@tauri-apps/plugin-dialog';
+  import { mod, openMenu, type MenuItem } from './lib/contextmenu.svelte';
+  import { copyText, readText } from './lib/clipboard';
 
   interface Tab {
     key: string;
@@ -65,7 +69,17 @@
   let settingsTab = $state<'appearance' | 'sync' | null>(null);
   let searchInput = $state<HTMLInputElement>();
   let snippetMenu = $state(false);
-  const panes: Record<string, { send: (text: string) => void; setCtrl: (on: boolean) => void } | undefined> = $state({});
+  type PaneApi = {
+    send: (text: string) => void;
+    setCtrl: (on: boolean) => void;
+    selection: () => string;
+    paste: (text: string) => void;
+    selectAll: () => void;
+    clear: () => void;
+    canReconnect: () => boolean;
+    reconnect: () => void;
+  };
+  const panes: Record<string, PaneApi | undefined> = $state({});
 
   let sync = $state<{ title: string; detail: string; state: 'off' | 'ok' | 'busy' | 'err' }>({
     title: '同步未开启',
@@ -175,6 +189,97 @@
     openTab(h);
   }
 
+  /** 会话状态变化；刚连接成功时记录时间，主机列表据此把最近连接的排在前面 */
+  function onTabStatus(t: Tab, s: Tab['status']) {
+    const justConnected = s.state === 'connected' && t.status.state !== 'connected';
+    t.status = s;
+    if (!justConnected) return;
+    void api
+      .hostTouch(t.host.id)
+      .then((ts) => {
+        const h = data.hosts.find((x) => x.id === t.host.id);
+        if (h) h.lastConnected = ts;
+      })
+      .catch(() => {});
+  }
+
+  // ---------------------------------------------------------------- 右键菜单
+  /** 终端：复制 / 粘贴 / 全选 / 清屏 / 代码片段 / SFTP / 重新连接 / 关闭 */
+  function terminalMenu(e: MouseEvent, t: Tab) {
+    const p = panes[t.key];
+    if (!p) return;
+    const sel = p.selection();
+    const items: MenuItem[] = [
+      { label: '复制', icon: 'copy', shortcut: mod('C'), disabled: !sel, action: () => copyText(sel) },
+      { label: '粘贴', icon: 'file', shortcut: mod('V'), disabled: t.status.state !== 'connected', action: async () => p.paste(await readText()) },
+      { label: '全选', shortcut: mod('A'), action: () => p.selectAll() },
+      { label: '清屏', icon: 'refresh', action: () => p.clear() },
+    ];
+    if (data.snippets.length) {
+      items.push('sep', {
+        label: '发送代码片段',
+        icon: 'code',
+        disabled: t.status.state !== 'connected',
+        submenu: data.snippets.map((s) => ({ label: s.name, action: () => p.send(s.command + (s.run ? '\r' : '')) })),
+      });
+    }
+    items.push('sep');
+    if (t.host.protocol === 'ssh') {
+      items.push({ label: t.sftp ? '关闭 SFTP' : '打开 SFTP', icon: 'folder', disabled: !t.status.sessionId, action: () => void (t.sftp = !t.sftp) });
+    }
+    items.push(
+      { label: '重新连接', icon: 'refresh', disabled: !p.canReconnect(), action: () => p.reconnect() },
+      { label: '关闭标签', icon: 'close', shortcut: mod('W'), action: () => closeTab(t.key) },
+    );
+    openMenu(e, items);
+  }
+
+  /** 标签页：重新连接 / 复制会话 / 关闭 / 关闭其他 / 关闭右侧 */
+  function tabMenu(e: MouseEvent, key: string) {
+    const i = tabs.findIndex((x) => x.key === key);
+    const t = tabs[i];
+    if (!t) return;
+    const p = panes[key];
+    openMenu(e, [
+      { label: '重新连接', icon: 'refresh', disabled: !p?.canReconnect(), action: () => p?.reconnect() },
+      { label: '复制会话', icon: 'copy', action: () => openTab(t.host) },
+      'sep',
+      { label: '关闭', icon: 'close', shortcut: mod('W'), action: () => closeTab(key) },
+      { label: '关闭其他标签', disabled: tabs.length < 2, action: () => tabs.filter((x) => x.key !== key).forEach((x) => closeTab(x.key)) },
+      { label: '关闭右侧标签', disabled: i === tabs.length - 1, action: () => tabs.slice(i + 1).forEach((x) => closeTab(x.key)) },
+    ]);
+  }
+
+  /** 全局：输入框给出编辑菜单，其他没有自定义菜单的地方不弹出系统菜单（重新载入、检查元素等） */
+  function globalContext(e: MouseEvent) {
+    if (e.defaultPrevented) return;
+    const el = e.target as HTMLElement;
+    const input = el.closest?.('input, textarea') as HTMLInputElement | HTMLTextAreaElement | null;
+    if (!input || input.closest('.xterm') || input.type === 'checkbox' || input.type === 'file') {
+      e.preventDefault();
+      return;
+    }
+    // number 等类型的输入框不支持读取光标位置，按整体内容处理
+    const textLike = input instanceof HTMLTextAreaElement || /^(text|search|password|url|tel|email)$/.test(input.type);
+    const start = textLike ? (input.selectionStart ?? 0) : 0;
+    const end = textLike ? (input.selectionEnd ?? 0) : input.value.length;
+    const selected = input.value.slice(start, end);
+    const secret = input.type === 'password';
+    const replace = (text: string) => {
+      input.focus();
+      if (textLike) input.setRangeText(text, input.selectionStart ?? 0, input.selectionEnd ?? 0, 'end');
+      else input.value = text;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    openMenu(e, [
+      { label: '剪切', shortcut: mod('X'), disabled: !selected || secret || input.readOnly, action: async () => (await copyText(selected), replace('')) },
+      { label: '复制', icon: 'copy', shortcut: mod('C'), disabled: !selected || secret, action: () => copyText(selected) },
+      { label: '粘贴', shortcut: mod('V'), disabled: input.readOnly, action: async () => replace(await readText()) },
+      'sep',
+      { label: '全选', shortcut: mod('A'), action: () => (input.focus(), input.select()) },
+    ]);
+  }
+
   function closeTab(key: string) {
     const i = tabs.findIndex((t) => t.key === key);
     if (i < 0) return;
@@ -199,6 +304,14 @@
     await loadAll();
     for (const t of tabs) if (t.host.id === h.id) t.host = h;
     editing = null;
+  }
+
+  /** 从右键菜单删除主机：先用系统对话框确认 */
+  async function deleteHost(h: Host) {
+    const ok = await askDialog(`删除主机「${h.name}」？保存的密码和使用它的端口转发规则也会一起删除。`, { title: '删除主机', kind: 'warning', okLabel: '删除', cancelLabel: '取消' });
+    if (!ok) return;
+    for (const t of tabs.filter((x) => x.host.id === h.id)) closeTab(t.key);
+    await remove(h);
   }
 
   async function remove(h: Host) {
@@ -249,7 +362,8 @@
   }
 </script>
 
-<svelte:window onkeydown={onKeydown} />
+<svelte:window onkeydown={onKeydown} oncontextmenu={globalContext} />
+<ContextMenu />
 
 {#if data.ready && data.vaultError}
   <div class="fatal">
@@ -318,6 +432,7 @@
             showSession = true;
           }}
           onclose={closeTab}
+          oncontext={tabMenu}
         />
         {#if activeTab && view === 'hosts' && isTerminal(activeTab.host)}
           <div class="tools">
@@ -371,7 +486,7 @@
       <div class="stage" class:focus={view === 'hosts' && !!activeTab} class:immersive>
         {#each tabs as t (t.key)}
           <div class="ws" class:hidden={view !== 'hosts' || t.key !== activeKey || !showSession}>
-            <div class="term-area">
+            <div class="term-area" oncontextmenu={(e) => isTerminal(t.host) && terminalMenu(e, t)}>
               {#if isTerminal(t.host)}
                 <TerminalPane
                   bind:this={panes[t.key]}
@@ -379,11 +494,11 @@
                   onctrlused={() => (ctrlOn = false)}
                   host={t.host}
                   active={view === 'hosts' && t.key === activeKey}
-                  onstatus={(s) => (t.status = s)}
+                  onstatus={(s) => onTabStatus(t, s)}
                   onhostkey={() => void loadAll()}
                 />
               {:else}
-                <RemoteDesktopPane host={t.host} active={view === 'hosts' && t.key === activeKey} onstatus={(s) => (t.status = s)} />
+                <RemoteDesktopPane host={t.host} active={view === 'hosts' && t.key === activeKey} onstatus={(s) => onTabStatus(t, s)} />
               {/if}
             </div>
             {#if t.sftp && t.status.sessionId}
@@ -420,6 +535,7 @@
             bind:searchInput
             onconnect={openTab}
             onedit={(h) => (editing = { host: h, isNew: false })}
+            ondelete={deleteHost}
             onduplicate={(h) => (editing = { host: { ...$state.snapshot(h), id: crypto.randomUUID(), name: `${h.name} 副本`, savePassword: false }, isNew: true })}
             onnew={(g) => (editing = { host: { ...api.blankHost(), group: g }, isNew: true })}
             onquick={quickConnect}

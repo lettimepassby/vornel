@@ -43,6 +43,8 @@
   } = $props();
 
   let ctrlLatch = false;
+  /** 测试接口的键：每个终端一个（同一台主机可以开多个会话） */
+  const hookKey = `${untrack(() => host.id)}:${crypto.randomUUID()}`;
 
   /** 移动端按键栏的粘滞 Ctrl：下一个输入的字母会变成控制字符。 */
   export function setCtrl(on: boolean) {
@@ -84,6 +86,29 @@
   export function send(text: string) {
     if (sessionId) void api.sessionWrite(sessionId, text).catch(() => {});
     term?.focus();
+  }
+
+  // ---- 右键菜单用到的终端操作
+  export function selection() {
+    return term?.hasSelection() ? term.getSelection() : '';
+  }
+  /** 粘贴：走 xterm 的 paste，远端开启 bracketed paste 时会正确包裹 */
+  export function paste(text: string) {
+    if (text) term?.paste(text);
+    term?.focus();
+  }
+  export function selectAll() {
+    term?.selectAll();
+  }
+  export function clear() {
+    term?.clear();
+    term?.focus();
+  }
+  export function canReconnect() {
+    return pane.state === 'closed' || pane.state === 'error';
+  }
+  export function reconnect() {
+    if (canReconnect()) void connect();
   }
 
   async function connect() {
@@ -226,7 +251,7 @@
       // 只读的测试接口：端到端测试用它读出终端缓冲区（WebGL 渲染时 DOM 里没有文字）
       const w = window as unknown as { __vornelTerminals?: Record<string, () => string> };
       w.__vornelTerminals ??= {};
-      w.__vornelTerminals[untrack(() => host.id)] = () => {
+      w.__vornelTerminals[hookKey] = () => {
         const b = term!.buffer.active;
         const lines: string[] = [];
         for (let i = 0; i < b.length; i++) lines.push(b.getLine(i)?.translateToString(true) ?? '');
@@ -272,6 +297,7 @@
 
     return () => {
       disposed = true;
+      delete (window as unknown as { __vornelTerminals?: Record<string, () => string> }).__vornelTerminals?.[hookKey];
       ro.disconnect();
       if (sessionId) void api.sessionClose(sessionId).catch(() => {});
       sessionId = null;

@@ -55,6 +55,17 @@ async function click(locator) {
 }
 async function type(locator, text, clear = true) {
   const el = await find(locator);
+  // WebKitWebDriver 输入需要 Shift 的字符（大写字母、符号）时偶尔会打乱顺序：
+  // 这类文字直接设置值并触发 input 事件，其余仍按真实键盘输入
+  if (/[A-Z~!@#$%^&*()_+{}|:"<>?]/.test(String(text))) {
+    await driver.executeScript(
+      'const el = arguments[0]; el.focus(); el.value = (arguments[2] ? "" : el.value) + arguments[1]; el.dispatchEvent(new Event("input", { bubbles: true }));',
+      el,
+      String(text),
+      clear,
+    );
+    return el;
+  }
   if (clear) {
     await el.sendKeys(Key.chord(Key.CONTROL, 'a'), Key.BACK_SPACE);
   }
@@ -63,6 +74,12 @@ async function type(locator, text, clear = true) {
 }
 const field = (label) => By.xpath(`//label[span[starts-with(normalize-space(.), ${JSON.stringify(label)})]]//input`);
 const button = (text) => By.xpath(`//button[contains(normalize-space(.), ${JSON.stringify(text)})]`);
+
+/** 像真实键盘一样逐个字符输入到当前焦点：WebKitWebDriver 一次发送多个字符时偶尔会打乱顺序 */
+async function typeKeys(text) {
+  for (const ch of text) await driver.actions().sendKeys(ch).perform();
+  await driver.actions().sendKeys(Key.ENTER).perform();
+}
 
 async function terminalText() {
   return driver.executeScript(
@@ -154,14 +171,15 @@ try {
   await check('终端执行命令并读回输出', async () => {
     // 点击终端获得焦点，再像真实键盘一样输入（xterm 的输入框是隐藏元素）
     await click(By.css('div[role="application"] .xterm-screen'));
-    await driver.actions().sendKeys('printf e2e-; seq 42 42', Key.ENTER).perform();
+    await typeKeys('printf e2e-; seq 42 42');
     await waitTerminal('e2e-42');
     await shot('ssh-command');
   });
 
   await check('终端选中即复制', async () => {
     // 拦截剪贴板写入，记录复制的内容（测试环境里读系统剪贴板不可靠）
-    await driver.executeScript('window.__copied = null; navigator.clipboard.writeText = async (t) => { window.__copied = t; };');
+    // 先清空系统剪贴板，复制后再从系统剪贴板读回
+    await driver.executeScript("return window.__TAURI_INTERNALS__.invoke('clipboard_write', { text: '' });");
     const scr = await find(By.css('div[role="application"] .xterm-screen'));
     const rect = await scr.getRect();
     await driver
@@ -171,8 +189,31 @@ try {
       .move({ origin: scr, x: Math.round(rect.width / 2) - 10, y: Math.round(-rect.height / 2) + 40 })
       .release()
       .perform();
-    await driver.wait(async () => !!(await driver.executeScript('return window.__copied')), 5000, '选中后没有复制到剪贴板');
+    await driver.wait(async () => !!(await driver.executeScript("return window.__TAURI_INTERNALS__.invoke('clipboard_read');")), 5000, '选中后没有复制到剪贴板');
     await shot('copy-on-select');
+  });
+
+  await check('右键菜单：终端粘贴、标签复制会话', async () => {
+    const clip = (text) => driver.executeScript("return window.__TAURI_INTERNALS__.invoke('clipboard_write', { text: arguments[0] });", text);
+    await clip('printf ctx-; seq 7 7');
+    const scr = await find(By.css('div[role="application"] .xterm-screen'));
+    await driver.actions().contextClick(scr).perform();
+    await find(By.css('div.cm[role="menu"]'));
+    await shot('ctx-terminal');
+    await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][contains(., "粘贴")]'));
+    // bash 开启了 bracketed paste：粘贴的换行不会直接执行（与其他终端一致），需要再按回车
+    await waitTerminal('printf ctx-; seq 7 7');
+    await driver.actions().sendKeys(Key.ENTER).perform();
+    await waitTerminal('ctx-7');
+    // 标签右键 → 复制会话：多出一个标签
+    const before = (await driver.findElements(By.css('div[role="tablist"] .tab'))).length;
+    await driver.actions().contextClick(await find(By.css('div[role="tablist"] .tab.on'))).perform();
+    await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][contains(., "复制会话")]'));
+    await driver.wait(async () => (await driver.findElements(By.css('div[role="tablist"] .tab'))).length === before + 1, 5000, '复制会话没有打开新标签');
+    // 关掉复制出来的标签，回到原来的会话
+    await driver.actions().contextClick(await find(By.css('div[role="tablist"] .tab.on'))).perform();
+    await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][.//span[contains(@class,"lb")][normalize-space(.)="关闭"]]'));
+    await driver.wait(async () => (await driver.findElements(By.css('div[role="tablist"] .tab'))).length === before, 5000, '关闭标签失败');
   });
 
   await check('SFTP 双栏列出远端目录', async () => {
@@ -258,6 +299,17 @@ try {
     await new Promise((r) => setTimeout(r, 2000));
     await shot('rdp');
   });
+  await check('右键菜单：主机卡片复制地址', async () => {
+    await click(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'));
+    await driver.executeScript("return window.__TAURI_INTERNALS__.invoke('clipboard_write', { text: '' });");
+    const card = await find(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-rdp")]'));
+    await driver.actions().contextClick(card).perform();
+    await find(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][contains(., "编辑")]'));
+    await shot('ctx-host');
+    await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][contains(., "复制地址")]'));
+    await driver.wait(async () => (await driver.executeScript("return window.__TAURI_INTERNALS__.invoke('clipboard_read');")) === '127.0.0.1', 5000, '没有复制主机地址');
+  });
+
   await check('搜索框快速连接 ssh user@host', async () => {
     await click(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'));
     const bar = await find(By.css('section[aria-label="主机列表"] input[aria-label="搜索主机"]'));
@@ -311,6 +363,26 @@ try {
       return [...document.querySelectorAll('section[aria-label="主机列表"] .card .txt b')]
         .filter((b) => b.scrollWidth > b.clientWidth + 1).map((b) => b.textContent);`);
     if (cut.length) throw new Error(`主机名被截断：${cut.join('、')}`);
+  });
+  await check('主机按最近连接排序；编辑主机时可以查看已保存的密码', async () => {
+    await click(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'));
+    // 主机按最近连接排序：刚连接过的 e2e-saved 排在最前
+    const first = await driver.executeScript(`
+      const h = [...document.querySelectorAll('section[aria-label="主机列表"] h2')].find((x) => x.textContent.trim() === '主机');
+      return h && h.nextElementSibling.querySelector('.card .txt b').textContent;`);
+    if (first !== 'e2e-saved') throw new Error(`排在最前的是 ${first}，应当是最近连接的 e2e-saved`);
+    const team = await find(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-team")]'));
+    await team.click();
+    const edit = await driver.wait(until.elementLocated(By.css('section[aria-label="主机列表"] button[aria-label="编辑 e2e-saved"]')), 20000);
+    await driver.executeScript('arguments[0].click()', edit);
+    const pw = await find(By.xpath('//dialog//label[span[normalize-space(.)="密码"]]//input'));
+    if ((await pw.getAttribute('type')) !== 'password') throw new Error('密码默认应当隐藏');
+    await click(By.css('dialog button[aria-label="显示密码"]'));
+    await driver.wait(async () => (await pw.getAttribute('value')) === env('SSH_PASS') && (await pw.getAttribute('type')) === 'text', 5000, '点击后没有显示已保存的密码');
+    await shot('show-password');
+    await click(By.css('dialog button[aria-label="隐藏密码"]'));
+    if ((await pw.getAttribute('type')) !== 'password') throw new Error('再次点击后没有隐藏');
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
   });
 } finally {
   await driver.quit().catch(() => {});

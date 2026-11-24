@@ -88,14 +88,26 @@ try {
   for (const theme of ['ink', 'paper']) {
     await check(`颜色令牌（${theme}）与 DESIGN.md 3.1 一致`, async () => {
       if (TOKENS.length < 10) throw new Error(`只解析到 ${TOKENS.length} 个令牌`);
-      const actual = await js(
+      // 让浏览器把规范值和实际值都解析成 rgba 数值再比较（#ffffff12 与 rgba(255,255,255,.07) 是同一个颜色）
+      const pairs = await js(
         `document.documentElement.dataset.theme = arguments[0];
          const cs = getComputedStyle(document.documentElement);
-         return Object.fromEntries(arguments[1].map((t) => [t, cs.getPropertyValue(t).trim()]));`,
+         const probe = document.createElement('span');
+         document.body.appendChild(probe);
+         const rgba = (c) => {
+           probe.style.color = '';
+           probe.style.color = c;
+           const m = getComputedStyle(probe).color.match(/[\\d.]+/g) || [];
+           return m.map(Number).concat(m.length === 3 ? [1] : []);
+         };
+         const out = arguments[1].map(([t, spec]) => ({ t, spec, raw: cs.getPropertyValue(t).trim(), a: rgba(cs.getPropertyValue(t).trim()), b: rgba(spec) }));
+         probe.remove();
+         return out;`,
         theme,
-        TOKENS.map((t) => t.token),
+        TOKENS.map((t) => [t.token, t[theme]]),
       );
-      const bad = TOKENS.filter((t) => norm(actual[t.token]) !== norm(t[theme])).map((t) => `${t.token} 规范 ${t[theme]} 实际 ${actual[t.token] || '(未定义)'}`);
+      const same = (a, b) => a.length === 4 && b.length === 4 && a.slice(0, 3).every((v, i) => Math.abs(v - b[i]) <= 1) && Math.abs(a[3] - b[3]) <= 0.01;
+      const bad = pairs.filter((p) => !same(p.a, p.b)).map((p) => `${p.t} 规范 ${p.spec} 实际 ${p.raw || '(未定义)'}`);
       if (bad.length) throw new Error(bad.join('；'));
     });
 
@@ -138,9 +150,9 @@ try {
     if (bad.length) throw new Error(bad.join('\n'));
   });
 
-  await check('对话框：默认宽 440、输入框高 32、Esc 关闭（DESIGN.md 6）', async () => {
+  await check('对话框：主机编辑宽 540、输入框高 32、Esc 关闭（DESIGN.md 6）', async () => {
     const w = await js(`return Math.round(document.querySelector('dialog[open]').getBoundingClientRect().width);`);
-    if (w !== 440) throw new Error(`新建主机对话框宽 ${w}`);
+    if (w !== 540) throw new Error(`新建主机对话框宽 ${w}（规范：主机编辑 540）`);
     const ih = await js(`return Math.round(document.querySelector('dialog[open] input.input').getBoundingClientRect().height);`);
     if (ih !== 32) throw new Error(`输入框高 ${ih}（规范 32）`);
     await driver.actions().sendKeys(Key.ESCAPE).perform();
@@ -153,8 +165,8 @@ try {
     await (await find(By.css('button[aria-label="设置"]'))).click();
     const bad = [];
     for (const p of PACKS) {
-      const btn = await find(By.xpath(`//dialog//button[contains(@class,"pk")][contains(., ${JSON.stringify(p.name)})]`));
-      await btn.click();
+      const btn = await driver.wait(until.elementLocated(By.xpath(`//dialog//button[contains(@class,"pk")][contains(., ${JSON.stringify(p.name)})]`)), 10000);
+      await js('arguments[0].scrollIntoView({ block: "center" }); arguments[0].click();', btn);
       const ok = await driver
         .wait(
           () =>
@@ -172,11 +184,12 @@ try {
       if (!ok) bad.push(`${p.name}（${p.ui} / ${p.mono}）`);
     }
     await shot('font-packs');
-    await (await find(By.xpath(`//dialog//button[contains(@class,"pk")][contains(., "现代")]`))).click();
+    await js('arguments[0].click()', await driver.wait(until.elementLocated(By.xpath(`//dialog//button[contains(@class,"pk")][contains(., "现代")]`)), 10000));
     if (bad.length) throw new Error(`没有正确加载：${bad.join('、')}`);
   });
 
   await check('屏幕阅读器模式开关、选中即复制开关存在（DESIGN.md 8）', async () => {
+    if (!(await js(`return !!document.querySelector('dialog[open]');`))) await (await find(By.css('button[aria-label="设置"]'))).click();
     await find(By.xpath('//dialog//label[contains(., "屏幕阅读器模式")]//input[@type="checkbox"]'));
     await find(By.xpath('//dialog//label[contains(., "选中即复制")]//input[@type="checkbox"]'));
     await driver.actions().sendKeys(Key.ESCAPE).perform();
