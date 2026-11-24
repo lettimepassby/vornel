@@ -36,7 +36,15 @@ async function find(locator, timeout = 20000) {
   await driver.wait(until.elementIsVisible(el), timeout);
   return el;
 }
+// 沉浸模式下侧边栏是隐藏的：要点侧边栏里的东西时，先点标签栏的“主机”按钮把它调出来（用户的真实操作路径）
+async function showSidebarIfNeeded(locator) {
+  const q = String(locator.value ?? locator);
+  if (!/aside|主导航|新建主机|"设置"/.test(q)) return;
+  const home = await driver.findElements(By.css('button.home-btn'));
+  if (home.length && (await home[0].isDisplayed())) await home[0].click();
+}
 async function click(locator) {
+  await showSidebarIfNeeded(locator);
   const el = await find(locator);
   await el.click();
   return el;
@@ -118,7 +126,7 @@ try {
     // 先用鼠标点击密码框（会被遮挡时这里会报 ElementClickIntercepted），再用键盘输入
     const pw = await click(By.xpath('//div[@role="application"]//input[@type="password"]'));
     await pw.sendKeys(env('SSH_PASS'), Key.ENTER);
-    await find(By.xpath('//footer[contains(., "已连接")]'), 30000);
+    await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 30000);
     await waitTerminal('SHA256:');
     // 终端的最后一行必须完整显示在容器内（不能被底边切掉）
     const overflow = await driver.executeScript(`
@@ -126,6 +134,12 @@ try {
       const box = screen.closest('.xterm').parentElement.getBoundingClientRect();
       return screen.getBoundingClientRect().bottom - box.bottom;`);
     if (overflow > 1) throw new Error(`终端超出容器 ${overflow}px，最后一行会被切掉`);
+    // 沉浸模式：连上后侧边栏隐藏，终端几乎占满窗口宽度
+    const layout = await driver.executeScript(`
+      const aside = document.querySelector('aside');
+      const stage = document.querySelector('.stage').getBoundingClientRect();
+      return { aside: !!aside, ratio: stage.width / window.innerWidth };`);
+    if (layout.aside || layout.ratio < 0.98) throw new Error(`没有进入全屏终端：${JSON.stringify(layout)}`);
     await shot('ssh-connected');
   });
 
@@ -201,7 +215,7 @@ try {
     await click(By.xpath('//aside//button[contains(., "e2e-rdp")]'));
     const pw = await type(By.xpath('//canvas[starts-with(@aria-label, "远程桌面")]/following-sibling::div//input[@type="password"]'), env('RDP_PASS'));
     await pw.sendKeys(Key.ENTER);
-    await find(By.xpath('//footer[contains(., "已连接")]'), 45000);
+    await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 45000);
     // 画布上应当有非黑色像素（收到了真实画面）
     await driver.wait(
       async () =>

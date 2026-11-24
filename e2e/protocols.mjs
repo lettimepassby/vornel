@@ -37,7 +37,15 @@ async function find(locator, timeout = 20000) {
   await driver.wait(until.elementIsVisible(el), timeout);
   return el;
 }
+// 沉浸模式下侧边栏是隐藏的：要点侧边栏里的东西时，先点标签栏的“主机”按钮把它调出来（用户的真实操作路径）
+async function showSidebarIfNeeded(locator) {
+  const q = String(locator.value ?? locator);
+  if (!/aside|主导航|新建主机|"设置"/.test(q)) return;
+  const home = await driver.findElements(By.css('button.home-btn'));
+  if (home.length && (await home[0].isDisplayed())) await home[0].click();
+}
 async function click(locator) {
+  await showSidebarIfNeeded(locator);
   const el = await find(locator);
   await el.click();
   return el;
@@ -159,7 +167,7 @@ try {
 
     await addHost({ protocol: 'Telnet', address: '127.0.0.1', port: env('TELNET_PORT'), name: 'e2e-telnet', user: env('TELNET_USER') });
     const key = await openTerminal('e2e-telnet');
-    await find(By.xpath('//footer[contains(., "已连接")]'), 30000);
+    await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 30000);
     await waitText(key, 'login:', '登录提示');
     await shot('telnet-login');
     await keyboard('e2e-telnet', env('TELNET_USER'));
@@ -181,7 +189,7 @@ try {
     await pw.sendKeys(env('VNC_PASS'));
     if ((await pw.getAttribute('value')) !== env('VNC_PASS')) await setValue(pw, env('VNC_PASS'));
     await pw.sendKeys(Key.ENTER);
-    await find(By.xpath('//footer[contains(., "已连接")]'), 45000);
+    await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 45000);
     // 桌面底色是 #3366cc：既验证收到了画面，也验证了颜色通道顺序
     let stats;
     try {
@@ -204,6 +212,9 @@ try {
     }
     console.log(`  画面 ${stats.w}×${stats.h}，${stats.blue}/${stats.n} 个采样点为桌面底色`);
     // VNC 不用用户名，状态栏不应显示 SSH 默认的 root@
+    // 沉浸模式隐藏了状态栏：先回到带侧边栏的布局再检查
+    const home = await driver.findElements(By.css('button.home-btn'));
+    if (home.length && (await home[0].isDisplayed())) await home[0].click();
     const footer = await (await find(By.css('footer'))).getText();
     if (footer.includes('root@')) throw new Error(`VNC 状态栏显示了无关的用户名：${footer}`);
     await sleep(1000);
@@ -218,7 +229,7 @@ try {
     await pw.sendKeys(env('SSH_PASS'));
     if ((await pw.getAttribute('value')) !== env('SSH_PASS')) await setValue(pw, env('SSH_PASS'));
     await pw.sendKeys(Key.ENTER);
-    await find(By.xpath('//footer[contains(., "已连接")]'), 45000);
+    await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 45000);
     // mosh 会整屏重绘（清掉之前的提示行），这个终端只属于 Mosh 会话，直接找行尾的提示符
     await waitText(key, (t) => /\$\s*$/m.test(t), 'shell 提示符', 45000);
     await shot('mosh-connected');

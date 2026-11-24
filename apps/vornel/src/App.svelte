@@ -42,6 +42,8 @@
   /** 移动布局下是否正在看某个会话（否则显示主机列表等页面） */
   let showSession = $state(false);
   let ctrlOn = $state(false);
+  /** 桌面端沉浸模式（参考 Termius）：打开会话后隐藏侧边栏与状态栏，终端铺满窗口，顶部只留标签栏 */
+  const immersive = $derived(!mobile && showSession && view === 'hosts' && !!activeTab);
   /** 偏好里用到、但本机还没下载的中文增强包 */
   let missingAddons = $state<string[]>([]);
   const MOBILE_TABS: { id: View | 'settings'; label: string; icon: 'host' | 'key' | 'code' | 'forward' | 'settings' }[] = [
@@ -197,8 +199,13 @@
     } else if (e.key === '0') {
       e.preventDefault();
       prefs.terminalFontSize = 13;
+    } else if (e.key === 'b' && !mobile && tabs.length) {
+      e.preventDefault();
+      showSession = !showSession;
+      if (showSession) view = 'hosts';
     } else if (e.key === 'k') {
       e.preventDefault();
+      showSession = false;
       view = 'hosts';
       searchInput?.focus();
     } else if (/^[1-9]$/.test(e.key) && e.metaKey) {
@@ -226,7 +233,7 @@
   </div>
 {:else}
   <div class="app" class:mobile>
-    {#if !mobile}
+    {#if !mobile && !immersive}
     <Sidebar
       hosts={data.hosts}
       connected={connectedIds}
@@ -266,13 +273,19 @@
         </div>
       {/if}
       {#if !mobile}
-      <div class="tb-wrap">
+      <div class="tb-wrap" class:immersive class:mac={immersive && macInset} data-tauri-drag-region>
+        {#if immersive}
+          <button class="home-btn" type="button" title="回到主机列表 ⌘B" onclick={() => (showSession = false)}>
+            <Icon name="host" size={15} />主机
+          </button>
+        {/if}
         <TabBar
           tabs={tabs.map((t) => ({ key: t.key, title: t.host.name, state: t.status.state }))}
           activeKey={view === 'hosts' ? activeKey : null}
           onselect={(k) => {
             activeKey = k;
             view = 'hosts';
+            showSession = true;
           }}
           onclose={closeTab}
         />
@@ -324,7 +337,7 @@
           {/if}
         </div>
       {/if}
-      <div class="stage" class:focus={view === 'hosts' && !!activeTab}>
+      <div class="stage" class:focus={view === 'hosts' && !!activeTab} class:immersive>
         {#each tabs as t (t.key)}
           <div class="ws" class:hidden={view !== 'hosts' || t.key !== activeKey || (mobile && !showSession)}>
             <div class="term-area">
@@ -417,7 +430,9 @@
           </nav>
         {/if}
       {:else}
-        <StatusBar host={view === 'hosts' ? (activeTab?.host ?? null) : null} status={view === 'hosts' ? (activeTab?.status ?? null) : null} />
+        {#if !immersive}
+          <StatusBar host={view === 'hosts' ? (activeTab?.host ?? null) : null} status={view === 'hosts' ? (activeTab?.status ?? null) : null} />
+        {/if}
       {/if}
     </main>
   </div>
@@ -511,6 +526,36 @@
     overflow: hidden;
     background: var(--pane);
     box-shadow: 0 0 0 1px var(--line);
+  }
+  /* 沉浸模式：终端贴边铺满，顶部标签栏为红绿灯留位 */
+  .stage.immersive {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .tb-wrap.immersive {
+    background: var(--pane);
+  }
+  .tb-wrap.mac {
+    padding-left: 78px;
+  }
+  .home-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 29px;
+    margin-left: 8px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 7px;
+    background: none;
+    color: var(--mut);
+    font-size: 12.5px;
+    flex: none;
+  }
+  .home-btn:hover {
+    background: var(--sel);
+    color: var(--fg);
   }
   .stage.focus {
     box-shadow: 0 0 0 1px var(--acc);
