@@ -384,6 +384,21 @@ try {
     if ((await pw.getAttribute('type')) !== 'password') throw new Error('再次点击后没有隐藏');
     await driver.actions().sendKeys(Key.ESCAPE).perform();
   });
+  await check('搜索后连接，回到主机页搜索结果仍在', async () => {
+    await click(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'));
+    const bar = await find(By.css('section[aria-label="主机列表"] input[aria-label="搜索主机"]'));
+    await bar.sendKeys(Key.chord(Key.CONTROL, 'a'), Key.BACK_SPACE, 'e2e-sav');
+    await click(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-saved")]'));
+    await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 30000);
+    await click(By.css('button.home-btn'));
+    const again = await find(By.css('section[aria-label="主机列表"] input[aria-label="搜索主机"]'));
+    const value = await again.getAttribute('value');
+    if (value !== 'e2e-sav') throw new Error(`回到主机页后搜索词变成了“${value}”`);
+    await find(By.xpath('//section[@aria-label="主机列表"]//h2[contains(., "搜索结果")]'));
+    await find(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-saved")]'));
+    await shot('search-kept');
+    await again.sendKeys(Key.chord(Key.CONTROL, 'a'), Key.BACK_SPACE);
+  });
 } finally {
   await driver.quit().catch(() => {});
   console.log('\n结果：');
