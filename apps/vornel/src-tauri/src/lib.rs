@@ -158,6 +158,7 @@ pub fn run() {
             commands::sync::sync_now,
             commands::sync::sync_oauth,
             commands::sync::sync_change_password,
+            commands::import::import_file,
             commands::fonts::font_addons,
             commands::fonts::system_fonts,
             commands::remote::remote_open,

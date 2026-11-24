@@ -235,6 +235,27 @@
     }
   }
 
+  // ---------------------------------------------------------------- 导入
+  let importMsg = $state('');
+  let importErr = $state('');
+  let importBusy = $state(false);
+  async function importData() {
+    importMsg = importErr = '';
+    const file = await openDialog({ title: '选择导入文件', filters: [{ name: 'Vornel 导入文件', extensions: ['json'] }] });
+    if (typeof file !== 'string') return;
+    importBusy = true;
+    try {
+      const r = await api.importFile(file);
+      importMsg = `已导入主机 ${r.hosts} 台（保存密码 ${r.passwords} 个）、密钥 ${r.keys} 把、代码片段 ${r.snippets} 条、已知主机 ${r.knownHosts} 条${r.skipped ? `；${r.skipped} 条已存在，已跳过` : ''}。`;
+      if (r.errors.length) importErr = `以下条目没有导入：\n${r.errors.join('\n')}`;
+      await loadAll();
+    } catch (e) {
+      importErr = api.errorText(e);
+    } finally {
+      importBusy = false;
+    }
+  }
+
   // ---------------------------------------------------------------- 安全
   let confirmReset = $state(false);
   async function resetVault() {
@@ -430,6 +451,13 @@
         <input type="checkbox" bind:checked={prefs.syncSecrets} />
         <span><b>同步保存的密码</b><br /><span class="sub">开启后，保存在 Vault 中的主机密码也会加密上传到云端。私钥是否同步在“密钥串”中单独设置。</span></span>
       </label>
+      <div class="block">
+        <b>导入数据</b>
+        <span class="sub">从 Vornel 导入文件（JSON）导入主机、保存的密码、密钥、代码片段和已知主机。已存在的条目会自动跳过，可以重复导入。</span>
+        <div><button class="btn ghost" type="button" onclick={importData} disabled={importBusy}>{importBusy ? '正在导入…' : '从文件导入…'}</button></div>
+        {#if importMsg}<p class="ok selectable">{importMsg}</p>{/if}
+        {#if importErr}<p class="error-box">{importErr}</p>{/if}
+      </div>
       <div class="block">
         <b>本机 Vault</b>
         <span class="sub">
