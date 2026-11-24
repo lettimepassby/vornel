@@ -9,7 +9,7 @@ export type MenuItem =
       shortcut?: string;
       danger?: boolean;
       disabled?: boolean;
-      action?: () => void | Promise<void>;
+      action?: () => unknown;
       submenu?: MenuItem[];
     }
   | 'sep';

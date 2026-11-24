@@ -77,13 +77,11 @@
   }
 </script>
 
-{#if !nested}
-  <svelte:window
-    onmousedown={(e) => ctxMenu.open && !(e.target as HTMLElement).closest?.('.cm') && closeMenu()}
-    onblur={closeMenu}
-    onresize={closeMenu}
-  />
-{/if}
+<svelte:window
+  onmousedown={(e) => !nested && ctxMenu.open && !(e.target as HTMLElement).closest?.('.cm') && closeMenu()}
+  onblur={() => !nested && closeMenu()}
+  onresize={() => !nested && closeMenu()}
+/>
 
 {#if open}
   <div
