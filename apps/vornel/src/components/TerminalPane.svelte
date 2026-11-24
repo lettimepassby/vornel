@@ -194,6 +194,8 @@
       });
       password = '';
       ask = null;
+      // “已连接”事件会先于 sessionOpen 返回到达，那时还拿不到会话 id：这里补上（资源栏依赖它）
+      sid = sessionId;
       onstatus({ ...pane, sessionId, cols: term.cols, rows: term.rows });
       term.focus();
     } catch (e) {
