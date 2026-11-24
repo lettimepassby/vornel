@@ -46,6 +46,9 @@ pub struct Host {
     /// 最近一次连接成功的时间（Unix 毫秒），用于主机列表排序。
     #[serde(default)]
     pub last_connected: Option<u64>,
+    /// 创建时间（Unix 毫秒）：新建的主机在列表里排在前面
+    #[serde(default)]
+    pub created_at: Option<u64>,
 }
 
 /// 从 `/etc/os-release` 与 `uname -s` 的输出中识别系统，返回小写的标识。

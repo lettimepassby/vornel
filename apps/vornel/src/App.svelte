@@ -650,7 +650,7 @@
             onconnect={openTab}
             onedit={(h) => (editing = { host: h, isNew: false })}
             ondelete={deleteHost}
-            onduplicate={(h) => (editing = { host: { ...$state.snapshot(h), id: crypto.randomUUID(), name: `${h.name} 副本`, savePassword: false }, isNew: true })}
+            onduplicate={(h) => (editing = { host: { ...$state.snapshot(h), id: crypto.randomUUID(), name: `${h.name} 副本`, savePassword: false, createdAt: Date.now(), lastConnected: null }, isNew: true })}
             onnew={(g) => (editing = { host: { ...api.blankHost(), group: g }, isNew: true })}
             onquick={quickConnect}
           />

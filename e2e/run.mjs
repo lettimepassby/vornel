@@ -455,6 +455,26 @@ try {
     await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][contains(., "退出分屏")]'));
     await driver.wait(async () => (await driver.findElements(By.css('.ws.split'))).length === 0, 5000, '退出分屏失败');
   });
+  await check('新建主机排在最前；保存的密码错误时弹出输入框，改正后保存', async () => {
+    await click(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'));
+    await addHost({ address: '127.0.0.1', port: env('SSH_PORT'), name: 'e2e-badpw', user: env('SSH_USER'), password: 'wrong-pass-1' });
+    const first = await driver.executeScript(`
+      const h = [...document.querySelectorAll('section[aria-label="主机列表"] h2')].find((x) => x.textContent.trim() === '主机');
+      return h && h.nextElementSibling.querySelector('.card .txt b').textContent;`);
+    if (first !== 'e2e-badpw') throw new Error(`新建的主机没有排在最前，第一个是 ${first}`);
+    await click(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-badpw")]'));
+    // 保存的密码是错的：弹出“认证失败”，可以改用户名和密码
+    await find(By.xpath('//div[contains(@class,"ws") and not(contains(@class,"hidden"))]//form[contains(@class,"card")][contains(., "认证失败")]'), 30000);
+    await find(By.xpath('//div[contains(@class,"ws") and not(contains(@class,"hidden"))]//label[span[normalize-space(.)="用户名"]]//input'));
+    await shot('auth-failed');
+    await type(By.xpath('//div[contains(@class,"ws") and not(contains(@class,"hidden"))]//label[span[normalize-space(.)="密码"]]//input'), env('SSH_PASS'));
+    await click(By.xpath('//div[contains(@class,"ws") and not(contains(@class,"hidden"))]//form[contains(@class,"card")]//button[@type="submit"]'));
+    await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 30000);
+    // 新密码已保存：再开一个会话不再询问
+    await click(By.css('button.home-btn'));
+    await click(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-badpw")]'));
+    await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 30000);
+  });
 } finally {
   await driver.quit().catch(() => {});
   console.log('\n结果：');

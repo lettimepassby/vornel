@@ -13,7 +13,7 @@
   import { Terminal } from '@xterm/xterm';
   import { FitAddon } from '@xterm/addon-fit';
   import { WebglAddon } from '@xterm/addon-webgl';
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import * as api from '../lib/api';
   import type { Host } from '../lib/api';
   import { ensureFamily, familyStack, findPack } from '../lib/fonts';
@@ -76,6 +76,9 @@
   let savePassword = $state(false);
   let passphrase = $state('');
   let ask = $state<'password' | 'passphrase' | null>(null);
+  /** 认证失败：弹出用户名 + 密码重新输入，成功后保存 */
+  let authFailed = $state(false);
+  let user = $state(untrack(() => host.username));
   let keyChanged = $state(false);
   let firstInput = $state<HTMLInputElement>();
 
@@ -139,6 +142,18 @@
     setStatus({ state: 'connecting' });
     line('info', '···', `正在连接 ${target()}${host.jumpHost ? '（经由跳板机）' : ''}`);
     try {
+      if (authFailed) {
+        const name = user.trim();
+        const switchToPassword = host.auth.type !== 'password' && !!password;
+        if ((name && name !== host.username) || switchToPassword) {
+          await api.save('host', {
+            ...$state.snapshot(host),
+            username: name || host.username,
+            ...(switchToPassword ? { auth: { type: 'password' } } : {}),
+          });
+          onhostkey?.(); // 刷新主机列表
+        }
+      }
       sessionId = await api.sessionOpen({
         hostId: host.id,
         password: ask === 'password' ? password : undefined,
@@ -154,6 +169,7 @@
           } else if (ev.type === 'os') {
             onhostkey?.(); // 主机记录更新了系统类型，刷新列表图标
           } else if (ev.type === 'connected') {
+            authFailed = false;
             line('ssh', host.protocol.toUpperCase().slice(0, 4), `已连接 ${target()}`);
             // 经由这台主机正在运行的端口转发
             for (const f of data.forwards) {
@@ -186,6 +202,18 @@
       if (message.startsWith('NEED_PASSWORD')) {
         ask = 'password';
         setStatus({ state: 'auth' });
+        return;
+      }
+      // 认证失败（保存的密码错了、换过密码、用户名不对等）：弹出输入框，连接成功后保存
+      if (message.includes('认证失败') && (host.protocol === 'ssh' || host.protocol === 'mosh')) {
+        line('err', 'ERR', message);
+        authFailed = true;
+        ask = 'password';
+        password = '';
+        savePassword = true;
+        user = host.username;
+        setStatus({ state: 'auth', message });
+        void tick().then(() => firstInput?.focus());
         return;
       }
       if (message.includes('私钥需要口令')) {
@@ -381,14 +409,22 @@
 
   {#if pane.state === 'auth' || pane.state === 'error' || pane.state === 'closed'}
     <div class="overlay">
-      <form class="card" onsubmit={submit}>
+      <form class="card" class:shake={authFailed} onsubmit={submit}>
         <div class="title">
           <span class="mono">{target()}</span>
+          {#if authFailed}<span class="hint err">认证失败</span>{/if}
           {#if pane.state === 'error'}<span class="hint err">连接失败</span>{/if}
           {#if pane.state === 'closed'}<span class="hint">连接已关闭</span>{/if}
         </div>
         {#if pane.state === 'error' && pane.message}
           <p class="msg">{pane.message}</p>
+        {/if}
+        {#if authFailed}
+          <p class="msg">用户名、密码或私钥不正确。请重新输入，连接成功后会保存到这台主机。</p>
+          <label class="field">
+            <span>用户名</span>
+            <input class="input mono" autocomplete="username" bind:value={user} />
+          </label>
         {/if}
         {#if ask === 'password'}
           <label class="field">
@@ -416,6 +452,20 @@
 </div>
 
 <style>
+  /* 认证失败时轻轻摇一下，提示需要重新输入 */
+  .card.shake {
+    animation: shake 360ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+  }
+  @keyframes shake {
+    20%,
+    60% {
+      transform: translateX(-6px);
+    }
+    40%,
+    80% {
+      transform: translateX(6px);
+    }
+  }
   .pane {
     position: absolute;
     inset: 0;

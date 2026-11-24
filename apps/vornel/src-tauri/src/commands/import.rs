@@ -224,6 +224,7 @@ pub fn import_into(v: &mut Vault, bundle: Bundle) -> Result<ImportReport, String
             domain: None,
             os: h.os.filter(|o| !o.is_empty()),
             last_connected: None,
+            created_at: Some(now_secs() * 1000),
         };
         if !h.host_ref.is_empty() {
             host_ids.insert(h.host_ref, host.id);
