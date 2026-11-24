@@ -4,11 +4,13 @@ import { flushSync } from 'svelte';
 
 type VTDocument = Document & { startViewTransition?: (cb: () => void) => unknown };
 
-export const supportsViewTransition = typeof document !== 'undefined' && 'startViewTransition' in document;
+// 自动化测试（WebDriver）驱动时不使用过渡：部分 WebView 在过渡期间会把新界面判为不可交互
+export const supportsViewTransition =
+  typeof document !== 'undefined' && 'startViewTransition' in document && !navigator.webdriver;
 
 export function vt(fn: () => void) {
   const d = document as VTDocument;
-  if (!d.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  if (!supportsViewTransition || !d.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) {
     fn();
     return;
   }

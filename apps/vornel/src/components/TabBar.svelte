@@ -44,12 +44,14 @@
   let drag = $state<{ key: string; startX: number; moved: boolean } | null>(null);
   let suppressClick = false;
 
-  function onDown(e: PointerEvent, key: string) {
+  // 用鼠标事件实现（WebDriver 等环境不一定产生 pointer 事件）；移动与松开监听在 window 上
+  function onDown(e: MouseEvent, key: string) {
     if (e.button !== 0 || renaming) return;
     drag = { key, startX: e.clientX, moved: false };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp, { once: true });
   }
-  function onMove(e: PointerEvent) {
+  function onMove(e: MouseEvent) {
     if (!drag || !tabsEl) return;
     if (!drag.moved && Math.abs(e.clientX - drag.startX) < 5) return;
     drag.moved = true;
@@ -66,6 +68,7 @@
     if (to !== from) onreorder?.(from, to);
   }
   function onUp() {
+    window.removeEventListener('mousemove', onMove);
     if (drag?.moved) suppressClick = true;
     drag = null;
   }
@@ -118,10 +121,7 @@
             role="tab"
             aria-selected={t.key === activeKey}
             title="拖动可调整顺序，双击或右键可重命名"
-            onpointerdown={(e) => onDown(e, t.key)}
-            onpointermove={onMove}
-            onpointerup={onUp}
-            onpointercancel={onUp}
+            onmousedown={(e) => onDown(e, t.key)}
             onclick={() => {
               if (suppressClick) return void (suppressClick = false);
               onselect(t.key);
