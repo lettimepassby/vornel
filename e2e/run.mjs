@@ -312,8 +312,13 @@ try {
         .filter((b) => b.scrollWidth > b.clientWidth + 1).map((b) => b.textContent);`);
     if (cut.length) throw new Error(`主机名被截断：${cut.join('、')}`);
   });
-  await check('编辑主机时可以查看已保存的密码', async () => {
+  await check('主机按最近连接排序；编辑主机时可以查看已保存的密码', async () => {
     await click(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'));
+    // 主机按最近连接排序：刚连接过的 e2e-saved 排在最前
+    const first = await driver.executeScript(`
+      const h = [...document.querySelectorAll('section[aria-label="主机列表"] h2')].find((x) => x.textContent.trim() === '主机');
+      return h && h.nextElementSibling.querySelector('.card .txt b').textContent;`);
+    if (first !== 'e2e-saved') throw new Error(`排在最前的是 ${first}，应当是最近连接的 e2e-saved`);
     const team = await find(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-team")]'));
     await team.click();
     const edit = await driver.wait(until.elementLocated(By.css('section[aria-label="主机列表"] button[aria-label="编辑 e2e-saved"]')), 20000);

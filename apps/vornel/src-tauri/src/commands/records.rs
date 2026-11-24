@@ -198,3 +198,22 @@ pub async fn secret_get(state: State<'_, AppState>, host_id: Uuid) -> CmdResult<
         .map_err(err)?
         .map(|s| s.password)))
 }
+
+/// 记录主机最近一次连接成功的时间（主机列表按它排序，随同步到其他设备）。
+#[tauri::command]
+pub async fn host_touch(state: State<'_, AppState>, host_id: Uuid) -> CmdResult<u64> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    with_vault!(state, |v| {
+        if let Some(h) = v.get::<Host>(host_id).map_err(err)? {
+            v.put(&Host {
+                last_connected: Some(now),
+                ..h
+            })
+            .map_err(err)?;
+        }
+        Ok(now)
+    })
+}

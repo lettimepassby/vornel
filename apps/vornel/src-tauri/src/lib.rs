@@ -142,6 +142,7 @@ pub fn run() {
             commands::records::record_save,
             commands::records::record_delete,
             commands::records::secret_get,
+            commands::records::host_touch,
             commands::keys::key_generate,
             commands::keys::key_import,
             commands::session::session_open,

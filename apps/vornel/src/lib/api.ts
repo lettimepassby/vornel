@@ -34,6 +34,8 @@ export interface Host {
   domain: string | null;
   /** 远端系统（连接后自动识别），如 ubuntu / debian / macos */
   os?: string | null;
+  /** 最近一次连接成功的时间（毫秒） */
+  lastConnected?: number | null;
 }
 
 export interface Key {
@@ -125,6 +127,9 @@ export const vaultStatus = () => invoke<{ ok: boolean; error: string | null }>('
 export const vaultReset = () => invoke<void>('vault_reset');
 export const list = <T>(kind: Kind) => invoke<T[]>('records_list', { kind });
 /** 读取主机保存的密码（用于在编辑主机时查看） */
+/** 记录主机刚刚连接成功（主机列表按最近连接排序） */
+export const hostTouch = (hostId: string) => invoke<number>('host_touch', { hostId });
+
 export const secretGet = (hostId: string) => invoke<string | null>('secret_get', { hostId });
 
 export const save = (kind: Exclude<Kind, 'known_host'>, value: unknown) =>
@@ -277,6 +282,7 @@ export function blankHost(): Host {
     serial: null,
     domain: null,
     os: null,
+    lastConnected: null,
   };
 }
 

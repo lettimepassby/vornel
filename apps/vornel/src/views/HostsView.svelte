@@ -68,7 +68,8 @@
     } else if (group) {
       list = list.filter((h) => h.group?.trim() === group);
     }
-    return [...list].sort((a, b) => a.name.localeCompare(b.name));
+    // 最近连接过的排在前面，没连过的按名称排序
+    return [...list].sort((a, b) => (b.lastConnected ?? 0) - (a.lastConnected ?? 0) || a.name.localeCompare(b.name));
   });
 
   /** 卡片图标：远端系统的 logo；RDP / VNC 用显示器，串口 / Telnet 用终端，未识别用服务器图标 */

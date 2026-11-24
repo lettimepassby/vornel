@@ -175,6 +175,20 @@
     openTab(h);
   }
 
+  /** 会话状态变化；刚连接成功时记录时间，主机列表据此把最近连接的排在前面 */
+  function onTabStatus(t: Tab, s: Tab['status']) {
+    const justConnected = s.state === 'connected' && t.status.state !== 'connected';
+    t.status = s;
+    if (!justConnected) return;
+    void api
+      .hostTouch(t.host.id)
+      .then((ts) => {
+        const h = data.hosts.find((x) => x.id === t.host.id);
+        if (h) h.lastConnected = ts;
+      })
+      .catch(() => {});
+  }
+
   function closeTab(key: string) {
     const i = tabs.findIndex((t) => t.key === key);
     if (i < 0) return;
@@ -379,11 +393,11 @@
                   onctrlused={() => (ctrlOn = false)}
                   host={t.host}
                   active={view === 'hosts' && t.key === activeKey}
-                  onstatus={(s) => (t.status = s)}
+                  onstatus={(s) => onTabStatus(t, s)}
                   onhostkey={() => void loadAll()}
                 />
               {:else}
-                <RemoteDesktopPane host={t.host} active={view === 'hosts' && t.key === activeKey} onstatus={(s) => (t.status = s)} />
+                <RemoteDesktopPane host={t.host} active={view === 'hosts' && t.key === activeKey} onstatus={(s) => onTabStatus(t, s)} />
               {/if}
             </div>
             {#if t.sftp && t.status.sessionId}
