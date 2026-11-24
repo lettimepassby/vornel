@@ -10,6 +10,7 @@
   import Dialog from './Dialog.svelte';
   import FontAddons from './FontAddons.svelte';
   import Icon from './Icon.svelte';
+  import { copyText } from '../lib/clipboard';
 
   let { onclose, initialTab = 'appearance' }: { onclose: () => void; initialTab?: Tab } = $props();
 
@@ -79,6 +80,26 @@
   let masterPw = $state('');
   let masterPw2 = $state('');
   let needPw = $state<'new' | 'existing' | null>(null);
+  /** 本机已加入云端同步库（之后才能修改主密码） */
+  let joined = $state(false);
+  let copied = $state(false);
+
+  /** 查询云端状态：需要设置 / 输入主密码时直接显示密码框 */
+  async function refreshCheck() {
+    try {
+      const c = await api.syncCheck();
+      needPw = c.needPassword === null ? null : c.needPassword ? 'new' : 'existing';
+      joined = c.configured && c.needPassword === null;
+    } catch {
+      joined = false;
+    }
+  }
+
+  async function copyError() {
+    await copyText(syncErr);
+    copied = true;
+    setTimeout(() => (copied = false), 1500);
+  }
 
   $effect(() => {
     void api.syncGetConfig().then((c) => {
@@ -86,6 +107,7 @@
       if (c) {
         backendType = c.type;
         Object.assign(form, c);
+        void refreshCheck();
       }
     });
   });
@@ -121,13 +143,21 @@
   async function saveBackend() {
     syncErr = '';
     syncMsg = '';
+    syncBusy = true;
     try {
       const c = buildConfig();
       await api.syncSetConfig(c);
       cfg = c;
-      syncMsg = '已保存。点击“立即同步”开始。';
+      await refreshCheck();
+      syncMsg = needPw === 'new'
+        ? '连接测试通过。请设置主密码，然后点击“立即同步”。'
+        : needPw === 'existing'
+          ? '连接测试通过，云端已有同步库。请输入主密码后点击“立即同步”。'
+          : '连接测试通过，已保存。';
     } catch (e) {
       syncErr = api.errorText(e);
+    } finally {
+      syncBusy = false;
     }
   }
 
@@ -138,7 +168,8 @@
     try {
       const provider = backendType === 'gdrive' ? 'google' : backendType === 'oneDrive' ? 'microsoft' : 'dropbox';
       cfg = await api.syncOAuth(provider, form.clientId, form.clientSecret);
-      syncMsg = '授权成功。点击“立即同步”开始。';
+      await refreshCheck();
+      syncMsg = needPw === 'new' ? '授权成功。请设置主密码，然后点击“立即同步”。' : '授权成功。点击“立即同步”开始。';
     } catch (e) {
       syncMsg = '';
       syncErr = api.errorText(e);
@@ -150,6 +181,8 @@
   async function disconnect() {
     await api.syncSetConfig(null);
     cfg = null;
+    joined = false;
+    needPw = null;
     syncMsg = '已断开同步，本机数据保留。';
   }
 
@@ -168,6 +201,7 @@
     try {
       const r = await api.syncNow(needPw ? masterPw : undefined);
       needPw = null;
+      joined = true;
       masterPw = masterPw2 = '';
       syncMsg = `${r.created ? '已创建云端同步库。' : ''}${r.joined ? '已加入已有的同步库。' : ''}拉取 ${r.pulled} 条，推送 ${r.pushed} 条。`;
       await loadAll();
@@ -356,7 +390,12 @@
         </div>
       {/if}
 
-      {#if syncErr}<p class="error-box">{syncErr}</p>{/if}
+      {#if syncErr}
+        <div class="error-box selectable">
+          <p>{syncErr}</p>
+          <button class="btn ghost copy" type="button" onclick={copyError}>{copied ? '已复制' : '复制错误信息'}</button>
+        </div>
+      {/if}
       {#if syncMsg}<p class="ok">{syncMsg}</p>{/if}
 
       <div class="dialog-actions">
@@ -365,14 +404,14 @@
         {#if isOAuth}
           <button class="btn ghost" type="button" onclick={authorize} disabled={syncBusy}>授权</button>
         {:else}
-          <button class="btn ghost" type="button" onclick={saveBackend}>保存</button>
+          <button class="btn ghost" type="button" onclick={saveBackend} disabled={syncBusy}>{syncBusy ? '正在测试连接…' : '保存并测试'}</button>
         {/if}
         <button class="btn" type="button" onclick={syncNow} disabled={!cfg || syncBusy}>
           <Icon name="refresh" size={14} />{syncBusy ? '同步中…' : '立即同步'}
         </button>
       </div>
 
-      {#if cfg && !needPw}
+      {#if cfg && joined && !needPw}
         <div class="block">
           <b>修改主密码</b>
           <span class="sub">只会用新密码重新加密数据密钥，数据本身不变；已加入的设备不需要重新输入。</span>
@@ -381,7 +420,7 @@
             <input class="input grow" type="password" bind:value={newPw2} placeholder="再输入一次" />
             <button class="btn ghost" type="button" onclick={changePassword} disabled={!newPw}>修改</button>
           </div>
-          {#if pwMsg}<p class="sub">{pwMsg}</p>{/if}
+          {#if pwMsg}<p class="sub selectable">{pwMsg}</p>{/if}
         </div>
       {/if}
     </section>

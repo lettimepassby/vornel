@@ -245,11 +245,26 @@ try {
     await click(By.css('button[aria-label="设置"]'));
     await click(By.xpath('//dialog//button[@role="tab"][normalize-space(.)="同步"]'));
     await click(By.xpath('//div[@aria-label="同步后端"]/button[normalize-space(.)="本地文件夹"]'));
+    // 先用一个没有写权限的目录：保存时的连接测试应当报错，错误信息可以复制
+    const ro = `/tmp/vornel-ro-${Date.now()}`;
+    fs.mkdirSync(path.join(ro, 'vornel'), { recursive: true });
+    fs.chmodSync(path.join(ro, 'vornel'), 0o555);
+    await type(By.xpath('//dialog//input[starts-with(@placeholder, "选择 iCloud Drive")]'), ro);
+    await click(By.xpath('//dialog//button[contains(., "保存并测试")]'));
+    await find(By.xpath('//dialog//div[contains(@class, "error-box")][contains(., "写入失败")]'), 30000);
+    await driver.executeScript('window.__copied = null; navigator.clipboard.writeText = async (t) => { window.__copied = t; };');
+    await click(By.xpath('//dialog//button[contains(., "复制错误信息")]'));
+    await driver.wait(async () => String(await driver.executeScript('return window.__copied')).includes('写入失败'), 5000, '错误信息没有被复制');
+    await shot('sync-probe-error');
+
+    // 换成正常目录：保存并测试通过后，直接提示设置主密码（不用先点同步）
     await type(By.xpath('//dialog//input[starts-with(@placeholder, "选择 iCloud Drive")]'), dir);
-    await click(By.xpath('//dialog//button[normalize-space(.)="保存"]'));
-    await find(By.xpath('//dialog//p[contains(@class, "ok")][contains(., "已保存")]'));
-    await click(By.xpath('//dialog//button[contains(., "立即同步")]'));
-    await find(By.xpath('//dialog//b[contains(., "设置主密码")]'), 30000);
+    await click(By.xpath('//dialog//button[contains(., "保存并测试")]'));
+    await find(By.xpath('//dialog//p[contains(@class, "ok")][contains(., "连接测试通过")]'), 30000);
+    await find(By.xpath('//dialog//b[contains(., "设置主密码")]'), 10000);
+    if (fs.existsSync(path.join(dir, 'vornel', '.vornel-probe'))) throw new Error('连接测试留下了 .vornel-probe');
+    // 还没加入同步库时，不应显示“修改主密码”
+    if ((await driver.findElements(By.xpath('//dialog//b[contains(., "修改主密码")]'))).length) throw new Error('未加入同步库时显示了修改主密码');
     await type(By.xpath('//dialog//input[@placeholder="主密码"]'), 'sync-pass-1');
     await type(By.xpath('//dialog//input[@placeholder="再输入一次"]'), 'sync-pass-1');
     await shot('sync-password');

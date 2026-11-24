@@ -23,7 +23,9 @@ pub async fn sync_set_config(
     config: Option<BackendConfig>,
 ) -> CmdResult<()> {
     if let Some(c) = &config {
-        c.operator().map_err(err)?;
+        // 保存前先做一次读写测试，权限、密钥、地址的问题在这里就提示出来
+        let op = c.operator().map_err(err)?;
+        vornel_sync::probe(&op).await.map_err(|e| e.to_string())?;
     }
     with_vault!(state, |v| match &config {
         Some(c) => v.meta_set(META_CONFIG, c).map_err(err),

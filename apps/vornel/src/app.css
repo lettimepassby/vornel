@@ -334,6 +334,23 @@ select {
   background: color-mix(in srgb, var(--err) 12%, transparent);
   color: var(--err);
   font-size: 12.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.error-box p {
+  margin: 0;
+}
+.error-box .copy {
+  margin-top: 8px;
+  height: 26px;
+  font-size: 12px;
+}
+/* 错误等提示文字允许选中复制（界面默认不可选中） */
+.selectable,
+.error-box {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
 }
 .dialog-actions {
   display: flex;

@@ -19,7 +19,7 @@ use vornel_vault::{unwrap_key, Hlc, KeyStore, Vault, VaultError, WrappedKey};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SyncError {
-    #[error("存储后端错误：{0}")]
+    #[error("{}", describe_storage(.0))]
     Storage(#[from] opendal::Error),
     #[error(transparent)]
     Vault(#[from] VaultError),
@@ -34,6 +34,66 @@ pub enum SyncError {
     Config(String),
     #[error("授权失败：{0}")]
     OAuth(String),
+    /// 连接测试某一步失败
+    #[error("{step}失败：{source}")]
+    Probe {
+        step: &'static str,
+        source: Box<SyncError>,
+    },
+}
+
+/// 把存储后端的错误翻译成用户能看懂的提示，并附上原始信息方便排查。
+pub fn describe_storage(e: &opendal::Error) -> String {
+    let raw = e.to_string();
+    let hint = if raw.contains("SignatureDoesNotMatch") {
+        "签名校验失败：Secret Access Key 不正确，或 Region 与存储桶不匹配。"
+    } else if raw.contains("InvalidAccessKeyId") {
+        "Access Key ID 不存在或已被删除。"
+    } else if raw.contains("NoSuchBucket") {
+        "存储桶不存在：请检查 Bucket 名称（区分大小写）和 Endpoint。"
+    } else {
+        match e.kind() {
+            ErrorKind::PermissionDenied => {
+                "云存储拒绝访问（403）：访问密钥没有这个存储桶的读写权限。\
+                 Cloudflare R2 的 API 令牌需要选择“对象读和写”，并且“应用到”里包含这个存储桶；\
+                 AWS S3 需要 s3:GetObject / PutObject / DeleteObject / ListBucket 权限。"
+            }
+            ErrorKind::NotFound => "找不到存储位置：请检查 Bucket、地址或目录是否存在。",
+            ErrorKind::ConfigInvalid => "同步配置有误，请检查各项填写。",
+            ErrorKind::RateLimited => "请求太频繁，被云存储限流，请稍后再试。",
+            _ if raw.contains("dns") || raw.contains("connect") || raw.contains("timed out") => {
+                "无法连接到云存储：请检查网络和 Endpoint 地址。"
+            }
+            _ => "访问云存储失败。",
+        }
+    };
+    format!("{hint}\n\n详细信息：{raw}")
+}
+
+/// 连接测试：确认能读、写、删除同步目录里的文件。保存同步设置时调用，问题能在第一步就暴露出来。
+pub async fn probe(op: &Operator) -> Result<()> {
+    let step = |step: &'static str| {
+        move |e: opendal::Error| SyncError::Probe {
+            step,
+            source: Box::new(SyncError::Storage(e)),
+        }
+    };
+    const PROBE: &str = ".vornel-probe";
+    read_optional(op, VAULT_FILE)
+        .await
+        .map_err(|e| SyncError::Probe {
+            step: "读取",
+            source: Box::new(e),
+        })?;
+    op.write(PROBE, b"vornel".to_vec())
+        .await
+        .map_err(step("写入"))?;
+    let back = op.read(PROBE).await.map_err(step("读回"))?.to_vec();
+    if back != b"vornel" {
+        return Err(SyncError::Config("写入后读回的内容不一致".into()));
+    }
+    op.delete(PROBE).await.map_err(step("删除"))?;
+    Ok(())
 }
 
 pub type Result<T> = std::result::Result<T, SyncError>;
