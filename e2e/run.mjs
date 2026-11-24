@@ -227,11 +227,13 @@ try {
     await waitTerminal('ctx-7');
     // 标签右键 → 复制会话：多出一个标签
     const before = (await driver.findElements(By.css('div[role="tablist"] .tab'))).length;
-    await driver.actions().contextClick(await find(By.css('div[role="tablist"] .tab.on'))).perform();
+    await driver.actions().contextClick(await find(By.css('div[role="tablist"] .tab.on .label'))).perform();
     await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][contains(., "复制会话")]'));
     await driver.wait(async () => (await driver.findElements(By.css('div[role="tablist"] .tab'))).length === before + 1, 5000, '复制会话没有打开新标签');
+    // 等新标签的滑入动画与切换过渡结束，再操作新标签
+    await new Promise((r) => setTimeout(r, 800));
     // 关掉复制出来的标签，回到原来的会话
-    await driver.actions().contextClick(await find(By.css('div[role="tablist"] .tab.on'))).perform();
+    await driver.actions().contextClick(await find(By.css('div[role="tablist"] .tab.on .label'))).perform();
     await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][.//span[contains(@class,"lb")][normalize-space(.)="关闭"]]'));
     await driver.wait(async () => (await driver.findElements(By.css('div[role="tablist"] .tab'))).length === before, 5000, '关闭标签失败');
   });
