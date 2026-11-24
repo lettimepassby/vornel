@@ -584,7 +584,7 @@
           {/if}
         </div>
       {/if}
-      <div class="stage" class:focus={view === 'hosts' && !!activeTab} class:immersive>
+      <div class="stage" class:focus={view === 'hosts' && showSession && !!activeTab} class:immersive>
         {#each tabs as t (t.key)}
           {@const si = splitKeys ? splitKeys.indexOf(t.key) : -1}
           <div
@@ -684,7 +684,8 @@
         {/if}
       {:else}
         {#if !immersive}
-          <StatusBar host={view === 'hosts' ? (activeTab?.host ?? null) : null} status={view === 'hosts' ? (activeTab?.status ?? null) : null} />
+          <!-- 只有正在看会话时才显示会话信息；主机页显示主机数量 -->
+          <StatusBar host={view === 'hosts' && showSession ? (activeTab?.host ?? null) : null} status={view === 'hosts' && showSession ? (activeTab?.status ?? null) : null} hostCount={data.hosts.length} />
         {/if}
       {/if}
     </main>

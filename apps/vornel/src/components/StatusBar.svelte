@@ -3,7 +3,7 @@
   import type { PaneStatus } from './TerminalPane.svelte';
   import { loadCurrentVersion, updater } from '../lib/updater.svelte';
 
-  let { host, status }: { host: Host | null; status: PaneStatus | null } = $props();
+  let { host, status, hostCount = 0 }: { host: Host | null; status: PaneStatus | null; hostCount?: number } = $props();
 
   const label: Record<string, string> = {
     auth: '等待认证',
@@ -22,13 +22,14 @@
     <span class="st {status.state}">● {label[status.state]}</span>
     <span>{host.username ? `${host.username}@` : ''}{host.address}:{host.port}</span>
     {#if host.protocol === 'ssh' || host.protocol === 'mosh'}
-      <span>{host.auth.type === 'password' ? '密码' : host.auth.type === 'agent' ? 'SSH Agent' : '私钥'}</span>
+      <span>{host.auth.type === 'password' ? '密码登录' : host.auth.type === 'agent' ? 'SSH Agent 登录' : '密钥登录'}</span>
     {/if}
     <span class="sp"></span>
     <span>UTF-8</span>
     {#if status.cols && status.rows}<span>{status.cols}×{status.rows}</span>{/if}
   {:else}
     <span>就绪</span>
+    {#if hostCount}<span>{hostCount} 台主机</span>{/if}
     <span class="sp"></span>
     {#if updater.current}<span>Vornel {updater.current}</span>{/if}
   {/if}
