@@ -5,6 +5,8 @@ name: E2E
 on:
   push:
     branches: ['**']
+    # 只改文档时不跑
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE*']
   workflow_dispatch:
 
 concurrency:
