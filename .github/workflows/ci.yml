@@ -44,6 +44,23 @@ jobs:
           # 只在 develop 上保存缓存，避免超过仓库 10 GB 上限后把打包用的缓存挤掉
           save-if: ${{ github.ref == 'refs/heads/develop' }}
       - run: cargo fmt --all --check
+      - name: 依赖许可检查（不允许 GPL / AGPL，见 ARCHITECTURE.md 第 4 节）
+        run: |
+          set -euo pipefail
+          # 只列出“仅 GPL 系”的依赖；同时提供 MIT / Apache 等可选许可的不算
+          BAD=$(cargo metadata --format-version 1 --locked | jq -r '.packages[] | select(.source != null) | select(.license != null) | select(.license | test("GPL")) | select(.license | test("MIT|Apache|BSD|ISC|Zlib|MPL") | not) | "\(.name) \(.version) \(.license)"')
+          NPM=$(jq -r '.packages | to_entries[] | select(.key != "") | select((.value.license // "") | test("GPL")) | select((.value.license // "") | test("MIT|Apache|BSD|ISC") | not) | "\(.key) \(.value.license)"' apps/vornel/package-lock.json)
+          if [ -n "$BAD$NPM" ]; then echo "发现 GPL 依赖："; echo "$BAD"; echo "$NPM"; exit 1; fi
+          echo "所有 Rust 与 npm 依赖均为宽松许可"
+      - name: 中文字体增强包：下载并校验固定的 sha256（ARCHITECTURE.md 第 8 节）
+        run: |
+          set -euo pipefail
+          F=apps/vornel/src-tauri/src/commands/fonts.rs
+          BASE=$(grep -oE 'https://github.com/[^"]+/fonts-v1/' $F | head -1)
+          paste <(grep -oE 'name: "[^"]+\.woff2"' $F | cut -d'"' -f2) <(grep -oE 'sha256: "[0-9a-f]{64}"' $F | cut -d'"' -f2) | while read -r name sum; do
+            curl -fsSL "$BASE$name" -o /tmp/font.woff2
+            echo "$sum  /tmp/font.woff2" | sha256sum -c --quiet - && echo "✓ $name"
+          done
       - run: cargo clippy --workspace --exclude vornel --all-targets
       - run: cargo test --workspace --exclude vornel
       - name: Mosh 端到端测试（连接真实的 mosh-server）

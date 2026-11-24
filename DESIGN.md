@@ -181,7 +181,7 @@ iOS 正文最小 15，跟随系统“动态字体”缩放。
 └──────────┴───────────────────────────────────────────┘
 ```
 
-- macOS 使用 `titleBarStyle: Overlay`，红绿灯落在侧边栏顶部 46px 区域内，左侧预留 78px。
+- macOS 使用 `titleBarStyle: Overlay`，红绿灯（`trafficLightPosition` x=16, y=23）垂直居中在侧边栏顶部 46px 区域内，左侧预留 84px；沉浸模式下同样居中在 46px 高的标签栏里。
 - Windows 使用系统标题栏。
 
 ### 5.4 iOS 骨架
