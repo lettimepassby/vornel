@@ -112,7 +112,9 @@
   </form>
 
   <div class="tools">
-    <button class="btn" type="button" onclick={() => onnew(group)}><Icon name="plus" size={14} stroke={2} />新建主机</button>
+    {#if hosts.length}
+      <button class="btn" type="button" onclick={() => onnew(group)}><Icon name="plus" size={14} stroke={2} />新建主机</button>
+    {/if}
     {#if group}
       <nav class="crumb" aria-label="当前位置" in:fade={{ duration: 120 }}>
         <button type="button" class="link" onclick={() => (group = null)}>全部主机</button>
