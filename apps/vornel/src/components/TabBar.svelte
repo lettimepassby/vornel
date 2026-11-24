@@ -5,6 +5,8 @@
     key: string;
     title: string;
     state: PaneState;
+    /** 处于分屏中 */
+    split?: boolean;
   }
 </script>
 
@@ -34,7 +36,7 @@
 <div class="tb" data-tauri-drag-region>
   <div class="tabs" role="tablist" aria-label="会话">
     {#each tabs as t (t.key)}
-      <div class="tab" class:on={t.key === activeKey}>
+      <div class="tab" class:on={t.key === activeKey} class:split={t.split}>
         <button
           class="label"
           type="button"
@@ -82,6 +84,10 @@
     color: var(--mut);
     transition: background 120ms ease-out;
     animation: tab-in 200ms var(--ease) both;
+  }
+  /* 分屏中的标签：底部一条强调色细线 */
+  .tab.split {
+    box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--acc) 70%, transparent);
   }
   @keyframes tab-in {
     from {

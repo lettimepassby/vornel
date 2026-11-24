@@ -97,6 +97,8 @@ export interface Prefs {
   terminalLineHeight: number | null;
   cursorStyle: 'block' | 'bar' | 'underline';
   cursorBlink: boolean;
+  /** SSH 终端底部显示服务器资源栏 */
+  showStats: boolean;
 }
 
 export interface GroupStyle {
@@ -331,3 +333,21 @@ export interface ImportReport {
 }
 /** 从 Vornel 导入文件（JSON）导入主机、密钥、片段、已知主机 */
 export const importFile = (path: string) => invoke<ImportReport>('import_file', { path });
+
+export interface ServerStats {
+  cpuTotal: number;
+  cpuIdle: number;
+  cores: number;
+  memTotal: number;
+  memAvailable: number;
+  swapTotal: number;
+  swapFree: number;
+  load: [number, number, number];
+  netRx: number;
+  netTx: number;
+  diskTotal: number;
+  diskUsed: number;
+  uptimeSecs: number;
+}
+/** 读取一次服务器资源；非 Linux 返回 null */
+export const sessionStats = (sessionId: string) => invoke<ServerStats | null>('session_stats', { sessionId });

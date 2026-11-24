@@ -117,6 +117,12 @@
       <label class="check"><input type="checkbox" bind:checked={prefs.cursorBlink} />光标闪烁</label>
     </section>
 
+    <section>
+      <h3>资源栏</h3>
+      <label class="check"><input type="checkbox" bind:checked={prefs.showStats} />SSH 终端底部显示服务器资源</label>
+      <p class="hint">经已有连接每 3 秒读取一次 /proc，只在会话可见时读取，对服务器几乎没有负担。仅支持 Linux。</p>
+    </section>
+
     <button class="btn ghost reset" type="button" onclick={reset}><Icon name="refresh" size={14} />恢复默认</button>
   </div>
 </aside>
@@ -232,6 +238,12 @@
     gap: 8px;
     margin-top: 10px;
     font-size: 13px;
+  }
+  .hint {
+    margin: 6px 0 0;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--mut);
   }
   .reset {
     margin-top: 22px;

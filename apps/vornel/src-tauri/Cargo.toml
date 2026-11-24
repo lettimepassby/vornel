@@ -44,6 +44,8 @@ arboard = { version = "3.6", default-features = false }
 # Windows 直接用签名过的 NSIS / MSI 安装包更新，不需要旧式 .zip 更新包，所以关掉 zip 特性
 tauri-plugin-updater = { version = "2.14", default-features = false, features = ["rustls-tls", "system-proxy"] }
 tauri-plugin-process = "2.4"
+# 记住窗口大小、位置与最大化状态（更新重启后保持）
+tauri-plugin-window-state = "2.5"
 
 # IronRDP 的智能卡支持（sspi → winscard）经由 flate2 需要 zlib 的 C 库。
 # iOS 的 Xcode 工程不链接系统 libz，因此在 iOS 上从源码静态编译 zlib，打进 Rust 静态库。

@@ -6958,6 +6958,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-window-state"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d6815cab7b212f9cfe16a9d79d8d22f9e14159e4a9460f7dec1467167a008e3"
+dependencies = [
+ "bitflags 2.13.2",
+ "log",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-plugin",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "tauri-runtime"
 version = "2.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7614,7 +7629,7 @@ dependencies = [
 
 [[package]]
 name = "vornel"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "arboard",
  "fontdb",
@@ -7629,6 +7644,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-process",
  "tauri-plugin-updater",
+ "tauri-plugin-window-state",
  "tokio",
  "uuid",
  "vornel-core",
@@ -7642,7 +7658,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-core"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "serde",
  "serde_json",
@@ -7651,7 +7667,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-mosh"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "aes 0.9.4",
  "base64 0.23.1",
@@ -7663,7 +7679,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-remote"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "base64 0.23.1",
  "ironrdp-connector",
@@ -7683,7 +7699,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-ssh"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "getrandom 0.4.3",
  "russh",
@@ -7695,7 +7711,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-sync"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "base64 0.23.1",
  "getrandom 0.4.3",
@@ -7716,7 +7732,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-term"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "serialport",
  "thiserror 2.0.21",
@@ -7725,7 +7741,7 @@ dependencies = [
 
 [[package]]
 name = "vornel-vault"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "argon2",
  "base64 0.23.1",

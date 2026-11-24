@@ -23,6 +23,7 @@
   const isMac = /Macintosh|Mac OS X|iPhone|iPad/.test(navigator.userAgent);
   import { badge, type BadgeKind } from '../lib/themes';
   import { resolveScheme } from '../lib/terminal-schemes';
+  import StatsBar from './StatsBar.svelte';
 
   let {
     host,
@@ -31,6 +32,8 @@
     onhostkey,
     autoReconnect = false,
     onctrlused,
+    visible = undefined,
+    oninput,
   }: {
     host: Host;
     active: boolean;
@@ -41,6 +44,10 @@
     autoReconnect?: boolean;
     /** 粘滞 Ctrl 被使用后通知界面复位按钮 */
     onctrlused?: () => void;
+    /** 是否显示在屏幕上（分屏时非焦点窗格也可见）；默认同 active */
+    visible?: boolean;
+    /** 键盘输入（分屏同步输入时转发给其他窗格） */
+    oninput?: (data: string) => void;
   } = $props();
 
   let ctrlLatch = false;
@@ -60,6 +67,11 @@
   let sessionId: string | null = null;
 
   let pane = $state<PaneStatus>({ state: 'connecting' });
+  /** 供资源栏使用的会话 id（sessionId 本身不是响应式的） */
+  let sid = $state<string | null>(null);
+  /** 服务器不是 Linux 时隐藏资源栏 */
+  let statsOk = $state(true);
+  const showStatsBar = $derived(host.protocol === 'ssh' && prefs.showStats && statsOk && pane.state === 'connected' && !!sid);
   let password = $state('');
   let savePassword = $state(false);
   let passphrase = $state('');
@@ -69,10 +81,12 @@
 
   const terminalProtocols = ['ssh', 'mosh', 'telnet', 'serial'];
   /** 终端四周留白也用配色的背景色，避免换了配色后出现一圈界面底色 */
-  const paneBg = $derived(resolveScheme(prefs.terminalTheme, prefs.theme).theme.background);
+  const scheme = $derived(resolveScheme(prefs.terminalTheme, prefs.theme));
+  const paneBg = $derived(scheme.theme.background);
 
   function setStatus(s: PaneStatus) {
     pane = s;
+    sid = sessionId;
     onstatus({ ...s, cols: term?.cols, rows: term?.rows, sessionId });
   }
 
@@ -83,6 +97,11 @@
 
   function line(kind: BadgeKind, label: string, text: string) {
     term?.write(badge(resolveScheme(prefs.terminalTheme, prefs.theme).dark ? 'ink' : 'paper', kind, label, text));
+  }
+
+  /** 写入会话但不抢焦点（分屏同步输入） */
+  export function write(data: string) {
+    if (sessionId) void api.sessionWrite(sessionId, data).catch(() => {});
   }
 
   /** 把文字发送到终端（代码片段等）。 */
@@ -284,6 +303,7 @@
           onctrlused?.();
         }
         if (sessionId) void api.sessionWrite(sessionId, out).catch(() => {});
+        oninput?.(out);
       });
 
       const h = untrack(() => host);
@@ -352,7 +372,12 @@
 </script>
 
 <div class="pane" role="application" aria-label="终端 {host.name}" style:background={paneBg}>
-  <div class="term" bind:this={container}></div>
+  <div class="term" bind:this={container} style:bottom={showStatsBar ? '30px' : '6px'}></div>
+  {#if showStatsBar && sid}
+    <div class="stats-wrap" style:color={scheme.theme.foreground}>
+      <StatsBar sessionId={sid} active={visible ?? active} onunsupported={() => (statsOk = false)} />
+    </div>
+  {/if}
 
   {#if pane.state === 'auth' || pane.state === 'error' || pane.state === 'closed'}
     <div class="overlay">

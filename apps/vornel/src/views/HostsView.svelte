@@ -16,6 +16,7 @@
   import { openMenu } from '../lib/contextmenu.svelte';
   import { copyText } from '../lib/clipboard';
   import { hostsNav } from '../lib/hostsview.svelte';
+  import { supportsViewTransition } from '../lib/vt';
   import { untrack } from 'svelte';
 
   let {
@@ -153,7 +154,7 @@
   }
 </script>
 
-<section class="hv" aria-label="主机列表" in:fade={{ duration: 160 }}>
+<section class="hv" aria-label="主机列表" in:fade={{ duration: supportsViewTransition ? 0 : 160 }}>
   <form class="bar" onsubmit={submitSearch}>
     <Icon name="search" size={15} />
     <input bind:this={searchInput} bind:value={query} placeholder="查找主机，或输入 ssh user@hostname 直接连接" aria-label="搜索主机" spellcheck="false" autocomplete="off" />

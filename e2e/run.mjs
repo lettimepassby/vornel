@@ -425,6 +425,36 @@ try {
     await (await driver.findElement(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'))).click();
     await driver.wait(async () => (await again.getAttribute('value')) === '', 5000, '再点“主机”后搜索没有清空');
   });
+  await check('SSH 终端底部显示服务器资源', async () => {
+    // 上一步留在主机页：连回 e2e-saved（已保存密码）
+    await click(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-saved")]'));
+    await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 30000);
+    const bar = await find(By.xpath('//div[contains(@class,"ws") and not(contains(@class,"hidden"))]//div[@aria-label="服务器资源"]'), 20000);
+    await driver.wait(async () => /CPU\s*\d+%/.test(await bar.getText()), 15000, '资源栏没有显示 CPU 使用率');
+    const text = await bar.getText();
+    for (const k of ['内存', '磁盘', '负载']) if (!text.includes(k)) throw new Error(`资源栏缺少 ${k}：${text}`);
+    await shot('server-stats');
+  });
+
+  await check('分屏 + 同步输入', async () => {
+    await click(By.xpath('//button[@title="分屏"]'));
+    await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][contains(., "左右两屏")]'));
+    await driver.wait(async () => (await driver.findElements(By.css('.ws.split'))).length === 2, 10000, '没有出现两个分屏窗格');
+    // 两个窗格并排可见
+    const rects = await driver.executeScript(`return [...document.querySelectorAll('.ws.split')].map((w) => { const r = w.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.width), getComputedStyle(w).visibility]; });`);
+    if (!(rects[0][0] !== rects[1][0] && rects.every((r) => r[2] === 'visible' && r[1] > 200))) throw new Error(`分屏布局不对：${JSON.stringify(rects)}`);
+    await click(By.xpath('//button[@title="分屏"]'));
+    await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][contains(., "开启同步输入")]'));
+    await find(By.xpath('//button[contains(., "同步输入中")]'));
+    await click(By.css('.ws.split.focus .xterm-screen'));
+    await typeKeys('printf bc-; seq 5 5');
+    // 两个会话都执行了这条命令
+    await driver.wait(async () => ((await terminalText()).match(/^bc-5$/gm) || []).length >= 2, 20000, '同步输入没有发到两个会话');
+    await shot('split-broadcast');
+    await click(By.xpath('//button[@title="分屏"]'));
+    await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][contains(., "退出分屏")]'));
+    await driver.wait(async () => (await driver.findElements(By.css('.ws.split'))).length === 0, 5000, '退出分屏失败');
+  });
 } finally {
   await driver.quit().catch(() => {});
   console.log('\n结果：');

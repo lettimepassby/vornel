@@ -3,8 +3,10 @@
 //! 所有需要保存、同步的数据都实现 [`Record`]，由 `vornel-vault` 加密存储、由 `vornel-sync` 同步。
 
 mod model;
+mod stats;
 
 pub use model::*;
+pub use stats::{parse_stats, ServerStats, STATS_COMMAND};
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;

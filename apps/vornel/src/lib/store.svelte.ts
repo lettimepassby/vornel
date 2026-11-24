@@ -19,6 +19,7 @@ const DEFAULT_PREFS: Prefs = {
   terminalLineHeight: null,
   cursorStyle: 'block',
   cursorBlink: true,
+  showStats: true,
 };
 
 function cachedPrefs(): Prefs {
