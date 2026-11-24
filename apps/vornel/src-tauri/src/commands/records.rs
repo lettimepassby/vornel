@@ -107,7 +107,7 @@ pub async fn record_save(state: State<'_, AppState>, kind: String, value: Value)
                     return Err("主机不存在".into());
                 }
                 if s.password.is_empty() {
-                    return v.delete::<Secret>(s.id).map_err(err);
+                    return v.delete::<Secret>(s.id).map(|_| ()).map_err(err);
                 }
                 s.sync = v
                     .get::<Prefs>(Uuid::nil())
