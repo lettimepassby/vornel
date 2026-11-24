@@ -23,13 +23,33 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # Ubuntu 镜像偶尔很慢（曾经单是下载就花了 30 分钟）：把下载好的 .deb 缓存起来复用
+      - name: 恢复 apt 安装包缓存
+        id: apt-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/apt-debs
+          key: apt-e2e-${{ hashFiles('.github/e2e-packages.txt') }}
+
       - name: 安装依赖与测试服务
+        # 有缓存时一分钟内完成；第一次需要从镜像下载，给足时间
+        timeout-minutes: ${{ steps.apt-cache.outputs.cache-hit == 'true' && 8 || 30 }}
         run: |
+          set -euo pipefail
+          mkdir -p ~/apt-debs
+          if ls ~/apt-debs/*.deb >/dev/null 2>&1; then sudo cp ~/apt-debs/*.deb /var/cache/apt/archives/; fi
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
-            webkit2gtk-driver xvfb openssh-server xrdp xorgxrdp x11vnc socat rclone \
-            inetutils-telnetd openbsd-inetd fonts-noto-cjk \
-            mosh x11-xserver-utils
+          sudo apt-get install -y -o APT::Keep-Downloaded-Packages=true $(grep -v '^#' .github/e2e-packages.txt)
+          cp /var/cache/apt/archives/*.deb ~/apt-debs/ 2>/dev/null || true
+          du -sh ~/apt-debs
+
+      # 安装完成就保存缓存（后面的测试失败也不影响），以后的运行不再从镜像下载
+      - name: 保存 apt 安装包缓存
+        if: steps.apt-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/apt-debs
+          key: apt-e2e-${{ hashFiles('.github/e2e-packages.txt') }}
 
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
