@@ -31,6 +31,7 @@
   import { ask as askDialog } from '@tauri-apps/plugin-dialog';
   import { mod, openMenu, type MenuItem } from './lib/contextmenu.svelte';
   import { copyText, readText } from './lib/clipboard';
+  import { resetHostsView } from './lib/hostsview.svelte';
 
   interface Tab {
     key: string;
@@ -385,6 +386,8 @@
       {counts}
       {sync}
       onview={(v) => {
+        // 已经在主机页时再点“主机”：清空搜索、回到全部主机
+        if (v === 'hosts' && view === 'hosts' && !showSession) resetHostsView();
         view = v;
         if (v === 'hosts') showSession = false;
       }}

@@ -15,6 +15,8 @@
   import GroupTile from '../components/GroupTile.svelte';
   import { openMenu } from '../lib/contextmenu.svelte';
   import { copyText } from '../lib/clipboard';
+  import { hostsNav } from '../lib/hostsview.svelte';
+  import { untrack } from 'svelte';
 
   let {
     hosts,
@@ -52,6 +54,17 @@
   // 回到主机页时恢复滚动位置
   $effect(() => {
     if (scroller) scroller.scrollTop = saved.scroll;
+  });
+  // 已在主机页时再点侧边栏“主机”：回到全部主机
+  let seenReset = untrack(() => hostsNav.resetCount);
+  $effect(() => {
+    const r = hostsNav.resetCount;
+    if (r === seenReset) return;
+    seenReset = r;
+    query = '';
+    group = null;
+    saved.scroll = 0;
+    if (scroller) scroller.scrollTop = 0;
   });
   /** 正在编辑外观的分组 */
   let editingGroup = $state<string | null>(null);

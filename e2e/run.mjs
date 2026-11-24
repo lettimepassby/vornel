@@ -387,7 +387,8 @@ try {
   await check('搜索后连接，回到主机页搜索结果仍在', async () => {
     await click(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'));
     const bar = await find(By.css('section[aria-label="主机列表"] input[aria-label="搜索主机"]'));
-    await bar.sendKeys(Key.chord(Key.CONTROL, 'a'), Key.BACK_SPACE, 'e2e-sav');
+    // 直接设值：用 Ctrl+A 清空时驱动偶尔不松开 Ctrl，后面的 v 会变成粘贴
+    await driver.executeScript('const el = arguments[0]; el.focus(); el.value = arguments[1]; el.dispatchEvent(new Event("input", { bubbles: true }));', bar, 'e2e-sav');
     await click(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-saved")]'));
     await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 30000);
     await click(By.css('button.home-btn'));
@@ -397,7 +398,9 @@ try {
     await find(By.xpath('//section[@aria-label="主机列表"]//h2[contains(., "搜索结果")]'));
     await find(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-saved")]'));
     await shot('search-kept');
-    await again.sendKeys(Key.chord(Key.CONTROL, 'a'), Key.BACK_SPACE);
+    // 再点一次侧边栏“主机”：清空搜索、回到全部主机
+    await (await driver.findElement(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'))).click();
+    await driver.wait(async () => (await again.getAttribute('value')) === '', 5000, '再点“主机”后搜索没有清空');
   });
 } finally {
   await driver.quit().catch(() => {});
