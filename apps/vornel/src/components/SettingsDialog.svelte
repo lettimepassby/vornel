@@ -287,6 +287,11 @@
       </div>
 
       <label class="check big">
+        <input type="checkbox" bind:checked={prefs.copyOnSelect} />
+        <span><b>选中即复制</b><br /><span class="sub">在终端里用鼠标选中文字后自动复制到剪贴板。关闭后可用 ⌘C（Windows 为 Ctrl+Shift+C）复制。</span></span>
+      </label>
+
+      <label class="check big">
         <input type="checkbox" bind:checked={prefs.screenReader} />
         <span><b>屏幕阅读器模式</b><br /><span class="sub">让 VoiceOver / 讲述人可以朗读终端内容。终端字号也可以用 ⌘+ / ⌘− / ⌘0 调整。</span></span>
       </label>

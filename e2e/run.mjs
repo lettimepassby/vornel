@@ -151,6 +151,22 @@ try {
     await shot('ssh-command');
   });
 
+  await check('终端选中即复制', async () => {
+    // 拦截剪贴板写入，记录复制的内容（测试环境里读系统剪贴板不可靠）
+    await driver.executeScript('window.__copied = null; navigator.clipboard.writeText = async (t) => { window.__copied = t; };');
+    const scr = await find(By.css('div[role="application"] .xterm-screen'));
+    const rect = await scr.getRect();
+    await driver
+      .actions()
+      .move({ origin: scr, x: Math.round(-rect.width / 2) + 4, y: Math.round(-rect.height / 2) + 8 })
+      .press()
+      .move({ origin: scr, x: Math.round(rect.width / 2) - 10, y: Math.round(-rect.height / 2) + 40 })
+      .release()
+      .perform();
+    await driver.wait(async () => !!(await driver.executeScript('return window.__copied')), 5000, '选中后没有复制到剪贴板');
+    await shot('copy-on-select');
+  });
+
   await check('SFTP 双栏列出远端目录', async () => {
     await click(button('SFTP'));
     await find(By.xpath('//section[@aria-label="远端"]//button[@role="option"][contains(., ".profile") or contains(., ".bashrc")]'), 30000);

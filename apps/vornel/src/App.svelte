@@ -42,8 +42,6 @@
   /** 移动布局下是否正在看某个会话（否则显示主机列表等页面） */
   let showSession = $state(false);
   let ctrlOn = $state(false);
-  /** 桌面端沉浸模式（参考 Termius）：打开会话后隐藏侧边栏与状态栏，终端铺满窗口，顶部只留标签栏 */
-  const immersive = $derived(!mobile && showSession && view === 'hosts' && !!activeTab);
   /** 偏好里用到、但本机还没下载的中文增强包 */
   let missingAddons = $state<string[]>([]);
   const MOBILE_TABS: { id: View | 'settings'; label: string; icon: 'host' | 'key' | 'code' | 'forward' | 'settings' }[] = [
@@ -70,6 +68,8 @@
   });
 
   const activeTab = $derived(tabs.find((t) => t.key === activeKey) ?? null);
+  /** 桌面端沉浸模式（参考 Termius）：打开会话后隐藏侧边栏与状态栏，终端铺满窗口，顶部只留标签栏 */
+  const immersive = $derived(!mobile && showSession && view === 'hosts' && !!activeTab);
   const connectedIds = $derived(new Set(tabs.filter((t) => t.status.state === 'connected').map((t) => t.host.id)));
   const counts = $derived({
     hosts: data.hosts.length,
@@ -537,20 +537,22 @@
     background: var(--pane);
   }
   .tb-wrap.mac {
-    padding-left: 78px;
+    padding-left: 84px;
   }
   .home-btn {
     display: flex;
     align-items: center;
-    gap: 6px;
-    height: 29px;
-    margin-left: 8px;
-    padding: 0 10px;
+    gap: 7px;
+    height: 32px;
+    min-width: 84px;
+    justify-content: center;
+    margin-left: 6px;
+    padding: 0 14px;
     border: 0;
     border-radius: 7px;
     background: none;
     color: var(--mut);
-    font-size: 12.5px;
+    font-size: 13px;
     flex: none;
   }
   .home-btn:hover {

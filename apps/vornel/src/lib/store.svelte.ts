@@ -13,6 +13,7 @@ const DEFAULT_PREFS: Prefs = {
   fontOverrides: {},
   syncSecrets: false,
   screenReader: false,
+  copyOnSelect: true,
 };
 
 function cachedPrefs(): Prefs {

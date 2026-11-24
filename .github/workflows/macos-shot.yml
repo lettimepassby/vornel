@@ -1,0 +1,60 @@
+name: macOS 界面截图
+
+# 在真实 macOS 上启动打包好的应用并截图，用来检查标题栏（红绿灯）等原生窗口细节。
+# 复用 main 上发布打包留下的编译缓存。
+on:
+  push:
+    branches: [develop]
+    paths:
+      - apps/vornel/src-tauri/tauri.conf.json
+      - apps/vornel/src/App.svelte
+      - apps/vornel/src/components/Sidebar.svelte
+      - apps/vornel/src/components/TabBar.svelte
+      - .github/workflows/macos-shot.yml
+  workflow_dispatch:
+
+jobs:
+  shot:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: vornel-macos-arm64
+          save-if: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/vornel/package-lock.json
+      - name: 打包 .app
+        working-directory: apps/vornel
+        run: |
+          npm ci
+          npx tauri icon app-icon.svg
+          npx tauri build --target aarch64-apple-darwin --bundles app --no-sign
+      - name: 启动并截图
+        run: |
+          APP=$(ls -d target/aarch64-apple-darwin/release/bundle/macos/*.app | head -1)
+          open "$APP"
+          sleep 12
+          mkdir -p shots
+          screencapture -x shots/full.png
+          # 前台窗口左上角放大图，便于看红绿灯与顶栏是否对齐
+          python3 - <<'PY'
+          import subprocess, json
+          out = subprocess.run(["osascript", "-e",
+            'tell application "System Events" to tell (first process whose frontmost is true) to get {position, size} of window 1'],
+            capture_output=True, text=True).stdout.strip()
+          print("window:", out)
+          x, y, w, h = [int(float(v)) for v in out.replace(" ", "").split(",")]
+          subprocess.run(["screencapture", "-x", "-R", f"{x},{y},420,90", "shots/titlebar.png"], check=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-shots
+          path: shots/

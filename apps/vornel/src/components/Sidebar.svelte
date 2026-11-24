@@ -137,7 +137,7 @@
     padding: 0 0 0 6px;
   }
   .top.mac {
-    padding-left: 78px;
+    padding-left: 84px;
   }
   .sp {
     flex: 1;

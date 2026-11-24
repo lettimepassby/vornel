@@ -84,6 +84,7 @@ export interface Prefs {
   fontOverrides: Record<string, string>;
   syncSecrets: boolean;
   screenReader: boolean;
+  copyOnSelect: boolean;
 }
 
 export const PROTOCOL_PORTS: Record<Protocol, number> = {

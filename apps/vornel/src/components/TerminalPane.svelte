@@ -18,6 +18,9 @@
   import type { Host } from '../lib/api';
   import { ensureFamily, familyStack, findPack } from '../lib/fonts';
   import { data, prefs } from '../lib/store.svelte';
+  import { copyText } from '../lib/clipboard';
+
+  const isMac = /Macintosh|Mac OS X|iPhone|iPad/.test(navigator.userAgent);
   import { badge, TERMINAL_THEMES, type BadgeKind } from '../lib/themes';
 
   let {
@@ -227,6 +230,18 @@
         for (let i = 0; i < b.length; i++) lines.push(b.getLine(i)?.translateToString(true) ?? '');
         return lines.join('\n');
       };
+      // 复制：选中即复制（可在设置里关闭），以及 ⌘C / Ctrl+Shift+C
+      el.addEventListener('mouseup', () => {
+        if (prefs.copyOnSelect && term?.hasSelection()) void copyText(term.getSelection());
+      });
+      term.attachCustomKeyEventHandler((e) => {
+        const isCopy = e.type === 'keydown' && e.key.toLowerCase() === 'c' && (isMac ? e.metaKey : e.ctrlKey && e.shiftKey);
+        if (isCopy && term?.hasSelection()) {
+          void copyText(term.getSelection());
+          return false;
+        }
+        return true;
+      });
       term.onData((d) => {
         let out = d;
         if (ctrlLatch && d.length === 1) {
