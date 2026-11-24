@@ -73,7 +73,7 @@ async function waitTerminal(needle, timeout = 30000) {
   await driver.wait(async () => (await terminalText()).includes(needle), timeout, `终端里没有出现 ${needle}`);
 }
 
-async function addHost({ protocol, address, port, name, user, password }) {
+async function addHost({ protocol, address, port, name, user, password, newGroup }) {
   await click(By.css('button[aria-label="新建主机"]'));
   await find(xText('新建主机', 'h2'));
   if (protocol) await click(By.xpath(`//div[@aria-label="协议"]/button[normalize-space(.)=${JSON.stringify(protocol)}]`));
@@ -81,10 +81,14 @@ async function addHost({ protocol, address, port, name, user, password }) {
   await type(field('端口'), String(port));
   await type(field('名称'), name);
   if (user !== undefined) await type(field('用户名'), user);
+  if (password) await type(By.xpath('//dialog//label[span[normalize-space(.)="密码"]]//input[@type="password"]'), password);
+  if (newGroup) {
+    await click(By.xpath('//dialog//select[@aria-label="分组"]/option[contains(., "新建分组")]'));
+    await type(field('新分组名称'), newGroup);
+  }
   await shot(`dialog-${name}`);
   await click(By.xpath('//dialog//button[@type="submit"]'));
   await find(By.xpath(`//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., ${JSON.stringify(name)})]`));
-  void password;
 }
 
 function tcpBanner(port) {
@@ -269,6 +273,16 @@ try {
     await find(By.xpath(`//div[@role="tablist"]//*[contains(., "${env('SSH_USER')}@localhost")]`), 15000);
     await find(By.xpath('//div[@role="application"]//input[@type="password"]'), 15000);
     await shot('quick-connect');
+  });
+  await check('新建主机时填写密码并新建分组，连接时不再询问密码', async () => {
+    await addHost({ address: '127.0.0.1', port: env('SSH_PORT'), name: 'e2e-saved', user: env('SSH_USER'), password: env('SSH_PASS'), newGroup: 'e2e-group' });
+    // 主机页出现新分组卡片，点进去能看到这台主机
+    await click(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-group")][contains(., "1 台主机")]'));
+    await click(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-saved")]'));
+    await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 30000);
+    const prompts = await driver.findElements(By.xpath('//div[@role="application"]//input[@type="password"]'));
+    for (const p of prompts) if (await p.isDisplayed()) throw new Error('已保存密码，但仍然弹出了密码框');
+    await shot('saved-password-connect');
   });
 } finally {
   await driver.quit().catch(() => {});

@@ -14,7 +14,7 @@
   }: {
     host: Host;
     isNew: boolean;
-    onsave: (h: Host) => Promise<void>;
+    onsave: (h: Host, password?: string) => Promise<void>;
     ondelete: (h: Host) => Promise<void>;
     onclose: () => void;
   } = $props();
@@ -27,6 +27,19 @@
   let error = $state('');
   let busy = $state(false);
   let confirmDelete = $state(false);
+  /** 新填写的密码（留空 = 不修改） */
+  let password = $state('');
+  /** 已保存过密码、用户点了“清除” */
+  let clearPassword = $state(false);
+  const hadPassword = untrack(() => !isNew && host.savePassword);
+  /** 分组：下拉选择已有分组，或“新建分组”后输入名称 */
+  const NEW_GROUP = '\u0000new';
+  let groupChoice = $state(untrack(() => host.group ?? ''));
+  let newGroup = $state('');
+  let newGroupInput = $state<HTMLInputElement>();
+  $effect(() => {
+    if (groupChoice === NEW_GROUP) newGroupInput?.focus();
+  });
 
   const groups = $derived([...new Set(data.hosts.map((h) => h.group).filter((g): g is string => !!g))].sort());
   const jumpCandidates = $derived(data.hosts.filter((h) => h.id !== draft.id && h.protocol === 'ssh'));
@@ -62,20 +75,23 @@
               ? { type: 'agent' }
               : { type: 'password' };
       if (authType === 'key' && !keyId) throw '请选择一把密钥';
+      if (groupChoice === NEW_GROUP && !newGroup.trim()) throw '请填写新分组的名称';
+      const usesPassword = (isSshLike && authType === 'password') || draft.protocol === 'rdp' || draft.protocol === 'vnc';
+      const savePassword = usesPassword && !!(password || (hadPassword && !clearPassword));
       const h: Host = {
         ...draft,
         name: draft.name.trim() || draft.address.trim(),
         address: draft.address.trim(),
         username: draft.username.trim(),
-        group: draft.group?.trim() || null,
+        group: (groupChoice === NEW_GROUP ? newGroup : groupChoice).trim() || null,
         port: Number(draft.port) || 0,
         auth,
         jumpHost: isSshLike ? draft.jumpHost || null : null,
-        savePassword: authType === 'password' ? draft.savePassword : false,
+        savePassword,
         serial: draft.protocol === 'serial' ? draft.serial : null,
         domain: draft.protocol === 'rdp' ? draft.domain?.trim() || null : null,
       };
-      await onsave(h);
+      await onsave(h, savePassword && password ? password : undefined);
     } catch (err) {
       error = api.errorText(err);
     } finally {
@@ -159,11 +175,20 @@
       {#if draft.protocol === 'rdp'}
         <label class="field span3"><span>域（可选）</span><input class="input mono" bind:value={draft.domain} /></label>
       {/if}
-      <label class="field span3">
+      <label class="field" class:span3={groupChoice !== NEW_GROUP}>
         <span>分组</span>
-        <input class="input" list="vornel-groups" bind:value={draft.group} placeholder="例如：生产环境" />
-        <datalist id="vornel-groups">{#each groups as g (g)}<option value={g}></option>{/each}</datalist>
+        <select class="input" bind:value={groupChoice} aria-label="分组">
+          <option value="">未分组</option>
+          {#each groups as g (g)}<option value={g}>{g}</option>{/each}
+          <option value={NEW_GROUP}>＋ 新建分组…</option>
+        </select>
       </label>
+      {#if groupChoice === NEW_GROUP}
+        <label class="field span2">
+          <span>新分组名称</span>
+          <input class="input" bind:this={newGroupInput} bind:value={newGroup} placeholder="例如：生产环境" />
+        </label>
+      {/if}
     </div>
 
     {#if isSshLike}
@@ -177,7 +202,20 @@
         </div>
       </div>
       {#if authType === 'password'}
-        <label class="check"><input type="checkbox" bind:checked={draft.savePassword} />在 Vault 中保存密码（首次连接时输入）</label>
+<label class="field">
+          <span>密码</span>
+          <input
+            class="input mono"
+            type="password"
+            bind:value={password}
+            autocomplete="new-password"
+            placeholder={hadPassword && !clearPassword ? '已保存（留空则不修改）' : '留空则连接时再输入'}
+          />
+        </label>
+        {#if hadPassword && !clearPassword}
+          <button class="link clear" type="button" onclick={() => ((clearPassword = true), (password = ''))}>清除已保存的密码</button>
+        {/if}
+        <p class="note">密码用本机数据密钥加密后保存在 Vault 里。</p>
       {:else if authType === 'key'}
         <label class="field">
           <span>密钥</span>
@@ -203,7 +241,20 @@
         <label class="check agent"><input type="checkbox" bind:checked={draft.agentForward} />转发本机 SSH Agent</label>
       </div>
     {:else if draft.protocol === 'rdp' || draft.protocol === 'vnc'}
-      <label class="check"><input type="checkbox" bind:checked={draft.savePassword} />在 Vault 中保存密码</label>
+<label class="field">
+        <span>密码</span>
+          <input
+            class="input mono"
+            type="password"
+            bind:value={password}
+            autocomplete="new-password"
+            placeholder={hadPassword && !clearPassword ? '已保存（留空则不修改）' : '留空则连接时再输入'}
+          />
+        </label>
+        {#if hadPassword && !clearPassword}
+          <button class="link clear" type="button" onclick={() => ((clearPassword = true), (password = ''))}>清除已保存的密码</button>
+        {/if}
+        <p class="note">密码用本机数据密钥加密后保存在 Vault 里。</p>
     {/if}
 
     {#if error}<p class="error-box" role="alert">{error}</p>{/if}
@@ -235,6 +286,11 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
     align-items: end;
+  }
+  .clear {
+    align-self: flex-start;
+    margin-top: -8px;
+    font-size: 12px;
   }
   .span2 {
     grid-column: span 2;

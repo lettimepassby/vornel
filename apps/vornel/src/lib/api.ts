@@ -109,7 +109,7 @@ export const PROTOCOL_LABELS: Record<Protocol, string> = {
 
 // ---------------------------------------------------------------- Vault 记录
 
-type Kind = 'host' | 'key' | 'snippet' | 'forward' | 'known_host' | 'prefs';
+type Kind = 'host' | 'key' | 'snippet' | 'forward' | 'known_host' | 'prefs' | 'secret';
 
 export const vaultStatus = () => invoke<{ ok: boolean; error: string | null }>('vault_status');
 export const vaultReset = () => invoke<void>('vault_reset');

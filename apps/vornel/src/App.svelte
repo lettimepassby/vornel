@@ -187,8 +187,10 @@
   }
 
   // ---------------------------------------------------------------- 主机
-  async function save(h: Host) {
+  async function save(h: Host, password?: string) {
     await api.save('host', h);
+    // 编辑主机时直接填写的密码：加密保存在 Vault，连接时不再询问
+    if (password) await api.save('secret', { id: h.id, password, sync: false });
     await loadAll();
     for (const t of tabs) if (t.host.id === h.id) t.host = h;
     editing = null;

@@ -1,30 +1,10 @@
-<script lang="ts" module>
-  /** 系统 → 图标底色与缩写（不使用商标图形，只用颜色和字母区分） */
-  const OS_STYLE: Record<string, { bg: string; label: string; name: string }> = {
-    ubuntu: { bg: '#E95420', label: 'Ub', name: 'Ubuntu' },
-    debian: { bg: '#C70036', label: 'De', name: 'Debian' },
-    centos: { bg: '#7B3F98', label: 'Ce', name: 'CentOS' },
-    rocky: { bg: '#10B981', label: 'Ro', name: 'Rocky Linux' },
-    almalinux: { bg: '#0F4266', label: 'Al', name: 'AlmaLinux' },
-    rhel: { bg: '#CC0000', label: 'RH', name: 'Red Hat' },
-    fedora: { bg: '#3C6EB4', label: 'Fe', name: 'Fedora' },
-    alpine: { bg: '#0D597F', label: 'Ap', name: 'Alpine' },
-    arch: { bg: '#1793D1', label: 'Ar', name: 'Arch Linux' },
-    opensuse: { bg: '#73BA25', label: 'Su', name: 'openSUSE' },
-    'opensuse-leap': { bg: '#73BA25', label: 'Su', name: 'openSUSE' },
-    amzn: { bg: '#FF9900', label: 'Az', name: 'Amazon Linux' },
-    freebsd: { bg: '#AB2B28', label: 'BSD', name: 'FreeBSD' },
-    macos: { bg: '#3A3A3C', label: 'mac', name: 'macOS' },
-    linux: { bg: '#4B5563', label: 'Lx', name: 'Linux' },
-  };
-</script>
-
 <script lang="ts">
   import { flip } from 'svelte/animate';
   import { fade } from 'svelte/transition';
   import type { Host } from '../lib/api';
   import Icon from '../components/Icon.svelte';
   import Logo from '../components/Logo.svelte';
+  import { osIcon } from '../lib/os-icons';
 
   let {
     hosts,
@@ -82,11 +62,13 @@
     return [...list].sort((a, b) => a.name.localeCompare(b.name));
   });
 
-  function osStyle(h: Host) {
-    if (h.protocol === 'rdp' || h.protocol === 'vnc') return { bg: '#2563EB', label: '', name: h.protocol.toUpperCase(), icon: 'monitor' as const };
-    if (h.protocol === 'serial' || h.protocol === 'telnet') return { bg: '#57534E', label: '', name: h.protocol, icon: 'terminal' as const };
-    const s = h.os ? OS_STYLE[h.os] : undefined;
-    return s ? { ...s, icon: null } : { bg: 'var(--acc)', label: '', name: '未识别系统', icon: 'host' as const };
+  /** 卡片图标：远端系统的 logo；RDP / VNC 用显示器，串口 / Telnet 用终端，未识别用服务器图标 */
+  function tileFor(h: Host) {
+    if (h.protocol === 'rdp' || h.protocol === 'vnc') return { bg: '#2563EB', fg: '#fff', name: h.protocol.toUpperCase(), icon: 'monitor' as const, path: null };
+    if (h.protocol === 'serial' || h.protocol === 'telnet') return { bg: '#57534E', fg: '#fff', name: h.protocol, icon: 'terminal' as const, path: null };
+    const os = osIcon(h.os);
+    if (os) return { bg: os.bg, fg: os.fg, name: os.name, icon: null, path: os.path };
+    return { bg: 'color-mix(in srgb, var(--acc) 80%, #000)', fg: '#fff', name: h.os ? h.os : '连接后自动识别系统', icon: 'host' as const, path: null };
   }
 
   function submitSearch(e: Event) {
@@ -149,7 +131,7 @@
       {#if shown.length}
         <div class="grid">
           {#each shown as h, i (h.id)}
-            {@const st = osStyle(h)}
+            {@const st = tileFor(h)}
             <div class="cell" animate:flip={{ duration: 180 }}>
               <button
                 class="card"
@@ -162,8 +144,12 @@
                 }}
                 title="连接 {h.username ? `${h.username}@` : ''}{h.address}:{h.port}（右键编辑）"
               >
-                <span class="tile" style:background={st.bg} title={st.name}>
-                  {#if st.icon}<Icon name={st.icon} size={19} />{:else}<span class="os">{st.label}</span>{/if}
+                <span class="tile" style:background={st.bg} style:color={st.fg} title={st.name}>
+                  {#if st.path}
+                    <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path d={st.path} fill="currentColor" /></svg>
+                  {:else if st.icon}
+                    <Icon name={st.icon} size={19} />
+                  {/if}
                   {#if connected.has(h.id)}<span class="live" aria-label="已连接"></span>{/if}
                 </span>
                 <span class="txt">
@@ -314,9 +300,9 @@
   .tile.grp {
     background: color-mix(in srgb, var(--acc) 85%, #000);
   }
-  .os {
-    font: 700 12.5px var(--f-ui);
-    letter-spacing: -0.02em;
+  .logo {
+    width: 21px;
+    height: 21px;
   }
   .live {
     position: absolute;
