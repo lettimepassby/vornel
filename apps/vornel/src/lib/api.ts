@@ -32,6 +32,8 @@ export interface Host {
   savePassword: boolean;
   serial: SerialConfig | null;
   domain: string | null;
+  /** 远端系统（连接后自动识别），如 ubuntu / debian / macos */
+  os?: string | null;
 }
 
 export interface Key {
@@ -125,6 +127,7 @@ export const keyImport = (name: string, pem: string, passphrase: string) =>
 export type SessionEvent =
   | { type: 'hostKey'; host: string; port: number; algorithm: string; fingerprint: string; new: boolean }
   | { type: 'connected' }
+  | { type: 'os'; os: string }
   | { type: 'closed'; exitStatus: number | null; reason: string | null };
 
 export interface OpenArgs {
@@ -260,6 +263,7 @@ export function blankHost(): Host {
     savePassword: false,
     serial: null,
     domain: null,
+    os: null,
   };
 }
 

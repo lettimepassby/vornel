@@ -138,17 +138,15 @@ try {
     if (bad.length) throw new Error(bad.join('\n'));
   });
 
-  await check('对话框：默认宽 440，Esc 关闭（DESIGN.md 6）', async () => {
+  await check('对话框：默认宽 440、输入框高 32、Esc 关闭（DESIGN.md 6）', async () => {
     const w = await js(`return Math.round(document.querySelector('dialog[open]').getBoundingClientRect().width);`);
     if (w !== 440) throw new Error(`新建主机对话框宽 ${w}`);
+    const ih = await js(`return Math.round(document.querySelector('dialog[open] input.input').getBoundingClientRect().height);`);
+    if (ih !== 32) throw new Error(`输入框高 ${ih}（规范 32）`);
     await driver.actions().sendKeys(Key.ESCAPE).perform();
     await driver.wait(async () => !(await js(`return !!document.querySelector('dialog[open]');`)), 5000, 'Esc 没有关闭对话框');
   });
 
-  await check('输入框高 32（DESIGN.md 6）', async () => {
-    const h = await js(`return Math.round(document.querySelector('aside input').getBoundingClientRect().height);`);
-    if (h !== 32) throw new Error(`搜索框高 ${h}`);
-  });
 
   await check('字体包：6 套都可切换且字体真实加载（DESIGN.md 4.2）', async () => {
     if (PACKS.length !== 6) throw new Error(`DESIGN.md 里解析到 ${PACKS.length} 套字体包`);

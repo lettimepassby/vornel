@@ -40,6 +40,33 @@ pub struct Host {
     /// RDP 域（可选）。
     #[serde(default)]
     pub domain: Option<String>,
+    /// 远端操作系统（`ubuntu`、`debian`、`centos`、`macos`…），连接成功后自动识别，用于主机列表的图标。
+    #[serde(default)]
+    pub os: Option<String>,
+}
+
+/// 从 `/etc/os-release` 与 `uname -s` 的输出中识别系统，返回小写的标识。
+pub fn parse_os(text: &str) -> Option<String> {
+    for line in text.lines() {
+        if let Some(v) = line.strip_prefix("ID=") {
+            let id = v.trim().trim_matches(['"', '\'']).to_lowercase();
+            if !id.is_empty() {
+                return Some(id);
+            }
+        }
+    }
+    let uname = text
+        .lines()
+        .map(str::trim)
+        .find(|l| !l.is_empty() && !l.contains('='))?;
+    Some(
+        match uname.to_lowercase().as_str() {
+            "darwin" => "macos",
+            "linux" => "linux",
+            other => return Some(other.to_string()),
+        }
+        .to_string(),
+    )
 }
 
 fn default_port() -> u16 {
@@ -392,6 +419,18 @@ impl Record for Prefs {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn detects_os() {
+        assert_eq!(
+            parse_os("NAME=\"Ubuntu\"\nID=ubuntu\nID_LIKE=debian\nLinux\n").as_deref(),
+            Some("ubuntu")
+        );
+        assert_eq!(parse_os("ID=\"rocky\"\n").as_deref(), Some("rocky"));
+        assert_eq!(parse_os("Darwin\n").as_deref(), Some("macos"));
+        assert_eq!(parse_os("FreeBSD\n").as_deref(), Some("freebsd"));
+        assert_eq!(parse_os(""), None);
+    }
 
     fn host() -> Host {
         serde_json::from_str(

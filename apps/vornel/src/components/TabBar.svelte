@@ -77,6 +77,13 @@
     border-radius: 7px;
     color: var(--mut);
     transition: background 120ms ease-out;
+    animation: tab-in 200ms var(--ease) both;
+  }
+  @keyframes tab-in {
+    from {
+      opacity: 0;
+      transform: translateX(-8px) scale(0.96);
+    }
   }
   .tab:hover {
     background: var(--sel);

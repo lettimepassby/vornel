@@ -76,6 +76,8 @@ pub struct BundleHost {
     pub jump_ref: Option<String>,
     #[serde(default)]
     pub agent_forward: bool,
+    #[serde(default)]
+    pub os: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -220,6 +222,7 @@ pub fn import_into(v: &mut Vault, bundle: Bundle) -> Result<ImportReport, String
             save_password: !h.password.is_empty(),
             serial: None,
             domain: None,
+            os: h.os.filter(|o| !o.is_empty()),
         };
         if !h.host_ref.is_empty() {
             host_ids.insert(h.host_ref, host.id);

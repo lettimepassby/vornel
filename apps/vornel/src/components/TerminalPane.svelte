@@ -104,6 +104,8 @@
           if (ev.type === 'hostKey') {
             line('key', 'KEY', `${ev.host}:${ev.port}  ${ev.fingerprint}${ev.new ? '  首次连接，已记录，请核对' : ''}`);
             if (ev.new) onhostkey?.();
+          } else if (ev.type === 'os') {
+            onhostkey?.(); // 主机记录更新了系统类型，刷新列表图标
           } else if (ev.type === 'connected') {
             line('ssh', host.protocol.toUpperCase().slice(0, 4), `已连接 ${target()}`);
             // 经由这台主机正在运行的端口转发
