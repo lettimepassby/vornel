@@ -12,8 +12,11 @@ export function vt(fn: () => void) {
     fn();
     return;
   }
-  d.startViewTransition(() => {
+  const t = d.startViewTransition(() => {
     fn();
     flushSync();
-  });
+  }) as { skipTransition?: () => void; finished?: Promise<void> } | undefined;
+  // 保险：过渡超过 600ms 还没结束（个别环境下渲染被节流）就直接跳过，界面不能一直处于过渡中
+  const guard = setTimeout(() => t?.skipTransition?.(), 600);
+  void t?.finished?.finally(() => clearTimeout(guard));
 }

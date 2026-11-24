@@ -434,6 +434,10 @@ textarea.input {
 }
 
 /* 视图切换（View Transitions）：主机页 ↔ 终端、标签切换时交叉淡入 + 轻微缩放 */
+/* 过渡层只负责画面，不拦截点击：切换后立即点击会直接落到新界面上 */
+::view-transition {
+  pointer-events: none;
+}
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation-duration: 220ms;
