@@ -12,6 +12,7 @@ on:
       - apps/vornel/src/components/TabBar.svelte
       - apps/vornel/src/components/WindowControls.svelte
       - apps/vornel/src-tauri/src/lib.rs
+      - apps/vornel/src-tauri/Info.plist
       - .github/workflows/macos-shot.yml
   workflow_dispatch:
 
@@ -38,6 +39,11 @@ jobs:
           npm ci
           npx tauri icon app-icon.svg
           npx tauri build --target aarch64-apple-darwin --bundles app --no-sign
+      - name: 检查本地网络权限说明已写入应用
+        run: |
+          APP=$(ls -d target/aarch64-apple-darwin/release/bundle/macos/*.app | head -1)
+          plutil -extract NSLocalNetworkUsageDescription raw "$APP/Contents/Info.plist"
+
       - name: 启动并截图
         run: |
           APP=$(ls -d target/aarch64-apple-darwin/release/bundle/macos/*.app | head -1)

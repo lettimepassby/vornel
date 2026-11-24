@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- macOS 15 / iOS 14 起访问局域网需要用户授权；没有这段说明时系统直接拒绝连接（No route to host） -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Vornel 需要访问局域网，才能连接你局域网里的服务器（SSH、SFTP、RDP、VNC、Telnet 等）。</string>
+</dict>
+</plist>
