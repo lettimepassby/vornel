@@ -161,7 +161,8 @@ try {
 
   await check('终端选中即复制', async () => {
     // 拦截剪贴板写入，记录复制的内容（测试环境里读系统剪贴板不可靠）
-    await driver.executeScript('window.__copied = null; navigator.clipboard.writeText = async (t) => { window.__copied = t; };');
+    // 先清空系统剪贴板，复制后再从系统剪贴板读回
+    await driver.executeScript("return window.__TAURI_INTERNALS__.invoke('clipboard_write', { text: '' });");
     const scr = await find(By.css('div[role="application"] .xterm-screen'));
     const rect = await scr.getRect();
     await driver
@@ -171,8 +172,28 @@ try {
       .move({ origin: scr, x: Math.round(rect.width / 2) - 10, y: Math.round(-rect.height / 2) + 40 })
       .release()
       .perform();
-    await driver.wait(async () => !!(await driver.executeScript('return window.__copied')), 5000, '选中后没有复制到剪贴板');
+    await driver.wait(async () => !!(await driver.executeScript("return window.__TAURI_INTERNALS__.invoke('clipboard_read');")), 5000, '选中后没有复制到剪贴板');
     await shot('copy-on-select');
+  });
+
+  await check('右键菜单：终端粘贴、标签复制会话', async () => {
+    const clip = (text) => driver.executeScript("return window.__TAURI_INTERNALS__.invoke('clipboard_write', { text: arguments[0] });", text);
+    await clip('printf ctx-; seq 7 7\n');
+    const scr = await find(By.css('div[role="application"] .xterm-screen'));
+    await driver.actions().contextClick(scr).perform();
+    await find(By.css('div.cm[role="menu"]'));
+    await shot('ctx-terminal');
+    await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][contains(., "粘贴")]'));
+    await waitTerminal('ctx-7');
+    // 标签右键 → 复制会话：多出一个标签
+    const before = (await driver.findElements(By.css('div[role="tablist"] .tab'))).length;
+    await driver.actions().contextClick(await find(By.css('div[role="tablist"] .tab.on'))).perform();
+    await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][contains(., "复制会话")]'));
+    await driver.wait(async () => (await driver.findElements(By.css('div[role="tablist"] .tab'))).length === before + 1, 5000, '复制会话没有打开新标签');
+    // 关掉复制出来的标签，回到原来的会话
+    await driver.actions().contextClick(await find(By.css('div[role="tablist"] .tab.on'))).perform();
+    await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][normalize-space(.)="关闭" or starts-with(normalize-space(.), "关闭⌘") or starts-with(normalize-space(.), "关闭Ctrl")]'));
+    await driver.wait(async () => (await driver.findElements(By.css('div[role="tablist"] .tab'))).length === before, 5000, '关闭标签失败');
   });
 
   await check('SFTP 双栏列出远端目录', async () => {
@@ -258,6 +279,17 @@ try {
     await new Promise((r) => setTimeout(r, 2000));
     await shot('rdp');
   });
+  await check('右键菜单：主机卡片复制地址', async () => {
+    await click(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'));
+    await driver.executeScript("return window.__TAURI_INTERNALS__.invoke('clipboard_write', { text: '' });");
+    const card = await find(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-rdp")]'));
+    await driver.actions().contextClick(card).perform();
+    await find(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][contains(., "编辑")]'));
+    await shot('ctx-host');
+    await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitem"][contains(., "复制地址")]'));
+    await driver.wait(async () => (await driver.executeScript("return window.__TAURI_INTERNALS__.invoke('clipboard_read');")) === '127.0.0.1', 5000, '没有复制主机地址');
+  });
+
   await check('搜索框快速连接 ssh user@host', async () => {
     await click(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'));
     const bar = await find(By.css('section[aria-label="主机列表"] input[aria-label="搜索主机"]'));

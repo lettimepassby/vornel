@@ -86,6 +86,29 @@
     term?.focus();
   }
 
+  // ---- 右键菜单用到的终端操作
+  export function selection() {
+    return term?.hasSelection() ? term.getSelection() : '';
+  }
+  /** 粘贴：走 xterm 的 paste，远端开启 bracketed paste 时会正确包裹 */
+  export function paste(text: string) {
+    if (text) term?.paste(text);
+    term?.focus();
+  }
+  export function selectAll() {
+    term?.selectAll();
+  }
+  export function clear() {
+    term?.clear();
+    term?.focus();
+  }
+  export function canReconnect() {
+    return pane.state === 'closed' || pane.state === 'error';
+  }
+  export function reconnect() {
+    if (canReconnect()) void connect();
+  }
+
   async function connect() {
     if (!term) return;
     keyChanged = false;

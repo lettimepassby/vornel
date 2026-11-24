@@ -38,6 +38,8 @@ vornel-vault.workspace = true
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
 # 列出本机已安装的字体（字体包“单独调整”里可选）
 fontdb = "0.24"
+# 剪贴板（只用文本，不启用图片功能以免引入图片解码库）
+arboard = { version = "3.6", default-features = false }
 # 应用内自动更新与更新后重启（iOS 走 App Store）
 # Windows 直接用签名过的 NSIS / MSI 安装包更新，不需要旧式 .zip 更新包，所以关掉 zip 特性
 tauri-plugin-updater = { version = "2.14", default-features = false, features = ["rustls-tls", "system-proxy"] }
