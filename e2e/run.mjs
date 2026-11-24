@@ -197,9 +197,9 @@ try {
     await click(By.xpath('//button[@title="终端外观"]'));
     await find(By.css('aside[aria-label="终端外观"]'));
     await click(By.css('aside[aria-label="终端外观"] button[aria-label="Dracula"]'));
-    // 终端背景换成 Dracula 的 #282A36
+    // 终端（含四周留白）背景换成 Dracula 的 #282A36
     await driver.wait(
-      async () => (await driver.executeScript(`return getComputedStyle(document.querySelector('div[role="application"] .xterm-viewport')).backgroundColor;`)) === 'rgb(40, 42, 54)',
+      async () => (await driver.executeScript(`return getComputedStyle(document.querySelector('div[role="application"]')).backgroundColor;`)) === 'rgb(40, 42, 54)',
       5000,
       '终端背景没有变成 Dracula 配色',
     );

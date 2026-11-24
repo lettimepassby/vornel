@@ -68,6 +68,8 @@
   let firstInput = $state<HTMLInputElement>();
 
   const terminalProtocols = ['ssh', 'mosh', 'telnet', 'serial'];
+  /** 终端四周留白也用配色的背景色，避免换了配色后出现一圈界面底色 */
+  const paneBg = $derived(resolveScheme(prefs.terminalTheme, prefs.theme).theme.background);
 
   function setStatus(s: PaneStatus) {
     pane = s;
@@ -349,7 +351,7 @@
   });
 </script>
 
-<div class="pane" role="application" aria-label="终端 {host.name}">
+<div class="pane" role="application" aria-label="终端 {host.name}" style:background={paneBg}>
   <div class="term" bind:this={container}></div>
 
   {#if pane.state === 'auth' || pane.state === 'error' || pane.state === 'closed'}
