@@ -384,6 +384,24 @@ pub struct Prefs {
     /// 分组外观：分组名 → 图标 / 底色 / 自定义图片
     #[serde(default)]
     pub group_styles: std::collections::BTreeMap<String, GroupStyle>,
+    /// 终端配色方案：`auto` 跟随界面主题，或 `dracula`、`nord` 等
+    #[serde(default = "default_auto")]
+    pub terminal_theme: String,
+    /// 终端行高；None 表示使用字体包的默认值
+    #[serde(default)]
+    pub terminal_line_height: Option<f32>,
+    /// 光标样式：`block` / `bar` / `underline`
+    #[serde(default = "default_cursor")]
+    pub cursor_style: String,
+    #[serde(default = "default_true")]
+    pub cursor_blink: bool,
+}
+
+fn default_auto() -> String {
+    "auto".into()
+}
+fn default_cursor() -> String {
+    "block".into()
 }
 
 /// 分组卡片的外观。
@@ -427,6 +445,10 @@ impl Default for Prefs {
             screen_reader: false,
             copy_on_select: true,
             group_styles: Default::default(),
+            terminal_theme: default_auto(),
+            terminal_line_height: None,
+            cursor_style: default_cursor(),
+            cursor_blink: true,
         }
     }
 }

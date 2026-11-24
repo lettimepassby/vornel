@@ -193,6 +193,26 @@ try {
     await shot('copy-on-select');
   });
 
+  await check('外观面板：切换配色、调整字号并立即生效', async () => {
+    await click(By.xpath('//button[@title="终端外观"]'));
+    await find(By.css('aside[aria-label="终端外观"]'));
+    await click(By.css('aside[aria-label="终端外观"] button[aria-label="Dracula"]'));
+    // 终端背景换成 Dracula 的 #282A36
+    await driver.wait(
+      async () => (await driver.executeScript(`return getComputedStyle(document.querySelector('div[role="application"] .xterm-viewport')).backgroundColor;`)) === 'rgb(40, 42, 54)',
+      5000,
+      '终端背景没有变成 Dracula 配色',
+    );
+    const size = () => driver.executeScript(`return JSON.parse(localStorage.getItem('vornel.prefs') || '{}').terminalFontSize;`);
+    const before = await size();
+    await click(By.css('aside[aria-label="终端外观"] button[aria-label="增大字号"]'));
+    await driver.wait(async () => (await size()) === before + 1, 5000, '字号没有变化');
+    await shot('appearance-panel');
+    await click(By.xpath('//aside[@aria-label="终端外观"]//button[contains(., "恢复默认")]'));
+    await driver.wait(async () => (await size()) === 13, 5000, '恢复默认后字号不是 13');
+    await click(By.css('button[aria-label="关闭外观面板"]'));
+  });
+
   await check('右键菜单：终端粘贴、标签复制会话', async () => {
     const clip = (text) => driver.executeScript("return window.__TAURI_INTERNALS__.invoke('clipboard_write', { text: arguments[0] });", text);
     await clip('printf ctx-; seq 7 7');
@@ -330,6 +350,9 @@ try {
     await addHost({ address: '127.0.0.1', port: env('SSH_PORT'), name: 'e2e-saved', user: env('SSH_USER'), password: env('SSH_PASS'), newGroup: 'e2e-group' });
     // 主机页出现新分组卡片，点进去能看到这台主机
     await click(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-group")][contains(., "1 台主机")]'));
+    // 等分组页切换完成（面包屑出现、卡片动画结束）再点主机，否则可能点到正在替换的旧元素
+    await find(By.xpath('//section[@aria-label="主机列表"]//nav[@aria-label="当前位置"][contains(., "e2e-group")]'));
+    await new Promise((r) => setTimeout(r, 400));
     await click(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-saved")]'));
     await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 30000);
     const prompts = await driver.findElements(By.xpath('//div[@role="application"]//input[@type="password"]'));

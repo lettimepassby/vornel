@@ -28,6 +28,7 @@
   import HostsView from './views/HostsView.svelte';
   import WindowControls from './components/WindowControls.svelte';
   import ContextMenu from './components/ContextMenu.svelte';
+  import AppearancePanel from './components/AppearancePanel.svelte';
   import { ask as askDialog } from '@tauri-apps/plugin-dialog';
   import { mod, openMenu, type MenuItem } from './lib/contextmenu.svelte';
   import { copyText, readText } from './lib/clipboard';
@@ -70,6 +71,8 @@
   let settingsTab = $state<'appearance' | 'sync' | null>(null);
   let searchInput = $state<HTMLInputElement>();
   let snippetMenu = $state(false);
+  /** 会话右侧的终端外观面板 */
+  let showStyle = $state(false);
   type PaneApi = {
     send: (text: string) => void;
     setCtrl: (on: boolean) => void;
@@ -462,6 +465,9 @@
                 <Icon name="folder" size={14} />SFTP
               </button>
             {/if}
+            <button class="btn ghost" class:on={showStyle} type="button" aria-pressed={showStyle} title="终端外观" onclick={() => (showStyle = !showStyle)}>
+              <Icon name="palette" size={14} />外观
+            </button>
           </div>
         {/if}
         {#if isWindows}<WindowControls />{/if}
@@ -506,6 +512,9 @@
             </div>
             {#if t.sftp && t.status.sessionId}
               <div class="sftp-area"><SftpPanel sessionId={t.status.sessionId} onclose={() => (t.sftp = false)} /></div>
+            {/if}
+            {#if showStyle && t.key === activeKey && isTerminal(t.host)}
+              <AppearancePanel onclose={() => (showStyle = false)} />
             {/if}
           </div>
         {/each}
