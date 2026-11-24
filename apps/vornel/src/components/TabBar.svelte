@@ -16,11 +16,14 @@
     activeKey,
     onselect,
     onclose,
+    oncontext,
   }: {
     tabs: TabInfo[];
     activeKey: string | null;
     onselect: (key: string) => void;
     onclose: (key: string) => void;
+    /** 标签右键菜单 */
+    oncontext?: (e: MouseEvent, key: string) => void;
   } = $props();
 
   function dotClass(s: PaneState) {
@@ -39,6 +42,7 @@
           aria-selected={t.key === activeKey}
           onclick={() => onselect(t.key)}
           onauxclick={(e) => e.button === 1 && onclose(t.key)}
+          oncontextmenu={(e) => oncontext?.(e, t.key)}
         >
           <span class="dot {dotClass(t.state)}"></span>
           <span class="name">{t.title}</span>

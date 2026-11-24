@@ -189,3 +189,31 @@ pub async fn record_delete(state: State<'_, AppState>, kind: String, id: Uuid) -
         Ok(())
     })
 }
+
+/// 读取某台主机保存的密码（编辑主机时点“显示密码”）。没有保存时返回 None。
+#[tauri::command]
+pub async fn secret_get(state: State<'_, AppState>, host_id: Uuid) -> CmdResult<Option<String>> {
+    with_vault!(state, |v| Ok(v
+        .get::<Secret>(host_id)
+        .map_err(err)?
+        .map(|s| s.password)))
+}
+
+/// 记录主机最近一次连接成功的时间（主机列表按它排序，随同步到其他设备）。
+#[tauri::command]
+pub async fn host_touch(state: State<'_, AppState>, host_id: Uuid) -> CmdResult<u64> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    with_vault!(state, |v| {
+        if let Some(h) = v.get::<Host>(host_id).map_err(err)? {
+            v.put(&Host {
+                last_connected: Some(now),
+                ..h
+            })
+            .map_err(err)?;
+        }
+        Ok(now)
+    })
+}

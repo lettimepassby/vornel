@@ -116,9 +116,15 @@ async function waitText(key, pred, what, timeout = 30000) {
   return last;
 }
 /** 点击终端获得焦点，再用真实键盘事件输入（只用不需要 Shift 的字符）。 */
+/** 像真实键盘一样逐个字符输入到当前焦点：WebKitWebDriver 一次发送多个字符时偶尔会打乱顺序 */
+async function typeKeys(text) {
+  for (const ch of text) await driver.actions().sendKeys(ch).perform();
+  await driver.actions().sendKeys(Key.ENTER).perform();
+}
+
 async function keyboard(name, text) {
   await click(By.xpath(`${pane(name)}//div[contains(@class, "xterm-screen")]`));
-  await driver.actions().sendKeys(text, Key.ENTER).perform();
+  await typeKeys(text);
 }
 const promptAfter = (marker) => (t) => {
   const i = t.lastIndexOf(marker);
@@ -256,9 +262,10 @@ try {
     await type(By.xpath('//dialog//input[starts-with(@placeholder, "选择 iCloud Drive")]'), ro);
     await click(By.xpath('//dialog//button[contains(., "保存并测试")]'));
     await find(By.xpath('//dialog//div[contains(@class, "error-box")][contains(., "写入失败")]'), 30000);
-    await driver.executeScript('window.__copied = null; navigator.clipboard.writeText = async (t) => { window.__copied = t; };');
+    // 先清空系统剪贴板，复制后再从系统剪贴板读回
+    await driver.executeScript("return window.__TAURI_INTERNALS__.invoke('clipboard_write', { text: '' });");
     await click(By.xpath('//dialog//button[contains(., "复制错误信息")]'));
-    await driver.wait(async () => String(await driver.executeScript('return window.__copied')).includes('写入失败'), 5000, '错误信息没有被复制');
+    await driver.wait(async () => String((await driver.executeScript("return window.__TAURI_INTERNALS__.invoke('clipboard_read');"))).includes('写入失败'), 5000, '错误信息没有被复制');
     await shot('sync-probe-error');
 
     // 换成正常目录：保存并测试通过后，直接提示设置主密码（不用先点同步）

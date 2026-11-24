@@ -8,6 +8,8 @@
   import { prefs } from '../lib/store.svelte';
   import GroupDialog from '../components/GroupDialog.svelte';
   import GroupTile from '../components/GroupTile.svelte';
+  import { openMenu } from '../lib/contextmenu.svelte';
+  import { copyText } from '../lib/clipboard';
 
   let {
     hosts,
@@ -15,6 +17,7 @@
     onconnect,
     onedit,
     onduplicate,
+    ondelete,
     onnew,
     onquick,
     searchInput = $bindable(),
@@ -25,6 +28,7 @@
     onedit: (h: Host) => void;
     /** 以这台主机为模板新建（复制一份） */
     onduplicate: (h: Host) => void;
+    ondelete: (h: Host) => void;
     onnew: (group: string | null) => void;
     /** 快速连接：`ssh user@host -p 22` / `user@host:port` */
     onquick: (target: { username: string; address: string; port: number }) => void;
@@ -68,7 +72,8 @@
     } else if (group) {
       list = list.filter((h) => h.group?.trim() === group);
     }
-    return [...list].sort((a, b) => a.name.localeCompare(b.name));
+    // 最近连接过的排在前面，没连过的按名称排序
+    return [...list].sort((a, b) => (b.lastConnected ?? 0) - (a.lastConnected ?? 0) || a.name.localeCompare(b.name));
   });
 
   /** 卡片图标：远端系统的 logo；RDP / VNC 用显示器，串口 / Telnet 用终端，未识别用服务器图标 */
@@ -78,6 +83,36 @@
     const os = osIcon(h.os);
     if (os) return { bg: os.bg, fg: os.fg, name: os.name, icon: null, path: os.path };
     return { bg: 'color-mix(in srgb, var(--acc) 80%, #000)', fg: '#fff', name: h.os ? h.os : '连接后自动识别系统', icon: 'host' as const, path: null };
+  }
+
+  // ---- 右键菜单
+  function hostMenu(e: MouseEvent, h: Host) {
+    const target = `${h.username ? `${h.username}@` : ''}${h.address}`;
+    openMenu(e, [
+      { label: '连接', icon: 'play', action: () => onconnect(h) },
+      'sep',
+      { label: '编辑…', icon: 'edit', action: () => onedit(h) },
+      { label: '复制一份', icon: 'copy', action: () => onduplicate(h) },
+      'sep',
+      { label: '复制地址', action: () => copyText(h.address) },
+      ...(h.protocol === 'ssh' ? [{ label: '复制 SSH 命令', icon: 'terminal' as const, action: () => copyText(`ssh ${h.port !== 22 ? `-p ${h.port} ` : ''}${target}`) }] : []),
+      'sep',
+      { label: '删除…', icon: 'trash', danger: true, action: () => ondelete(h) },
+    ]);
+  }
+
+  function groupMenu(e: MouseEvent, g: string) {
+    openMenu(e, [
+      { label: '打开分组', icon: 'group', action: () => (group = g) },
+      { label: '在此分组新建主机', icon: 'plus', action: () => onnew(g) },
+      'sep',
+      { label: '分组外观…', icon: 'edit', action: () => (editingGroup = g) },
+    ]);
+  }
+
+  function blankMenu(e: MouseEvent) {
+    if ((e.target as HTMLElement).closest('.card, input, button')) return;
+    openMenu(e, [{ label: group ? `在「${group}」新建主机` : '新建主机', icon: 'plus', action: () => onnew(group) }]);
   }
 
   function submitSearch(e: Event) {
@@ -115,7 +150,7 @@
     {/if}
   </div>
 
-  <div class="scroll">
+  <div class="scroll" role="presentation" oncontextmenu={blankMenu}>
     {#if !hosts.length}
       <div class="empty">
         <Logo size={56} blink />
@@ -134,11 +169,8 @@
                 type="button"
                 style:--i={i}
                 onclick={() => (group = g)}
-                oncontextmenu={(e) => {
-                  e.preventDefault();
-                  editingGroup = g;
-                }}
-                title="打开分组 {g}（右键设置外观）"
+                oncontextmenu={(e) => groupMenu(e, g)}
+                title="打开分组 {g}"
               >
                 <span class="gt"><GroupTile style={prefs.groupStyles?.[g]} /></span>
                 <span class="txt"><b>{g}</b><small>{n} 台主机</small></span>
@@ -162,11 +194,8 @@
                 type="button"
                 style:--i={Math.min(i, 24)}
                 onclick={() => onconnect(h)}
-                oncontextmenu={(e) => {
-                  e.preventDefault();
-                  onedit(h);
-                }}
-                title="连接 {h.username ? `${h.username}@` : ''}{h.address}:{h.port}（右键编辑）"
+                oncontextmenu={(e) => hostMenu(e, h)}
+                title="连接 {h.username ? `${h.username}@` : ''}{h.address}:{h.port}（右键查看更多操作）"
               >
                 <span class="tile" style:background={st.bg} style:color={st.fg} title={st.name}>
                   {#if st.path}

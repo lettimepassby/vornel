@@ -43,6 +43,9 @@ pub struct Host {
     /// 远端操作系统（`ubuntu`、`debian`、`centos`、`macos`…），连接成功后自动识别，用于主机列表的图标。
     #[serde(default)]
     pub os: Option<String>,
+    /// 最近一次连接成功的时间（Unix 毫秒），用于主机列表排序。
+    #[serde(default)]
+    pub last_connected: Option<u64>,
 }
 
 /// 从 `/etc/os-release` 与 `uname -s` 的输出中识别系统，返回小写的标识。

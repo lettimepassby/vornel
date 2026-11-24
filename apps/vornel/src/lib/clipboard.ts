@@ -1,11 +1,19 @@
-// 写入剪贴板：优先用异步剪贴板 API，不可用时退回 execCommand。
+// 剪贴板：桌面端走原生剪贴板（读剪贴板不会弹系统确认），其他情况退回 WebView 接口。
+import { invoke } from '@tauri-apps/api/core';
+
 export async function copyText(text: string): Promise<void> {
   if (!text) return;
+  try {
+    await invoke('clipboard_write', { text });
+    return;
+  } catch {
+    // iOS 等：用 WebView 接口
+  }
   try {
     await navigator.clipboard.writeText(text);
     return;
   } catch {
-    // WebView 拒绝时走下面的兼容方式
+    // 再退回 execCommand
   }
   const ta = document.createElement('textarea');
   ta.value = text;
@@ -18,5 +26,13 @@ export async function copyText(text: string): Promise<void> {
   } finally {
     ta.remove();
     prev?.focus();
+  }
+}
+
+export async function readText(): Promise<string> {
+  try {
+    return await invoke<string>('clipboard_read');
+  } catch {
+    return navigator.clipboard.readText().catch(() => '');
   }
 }
