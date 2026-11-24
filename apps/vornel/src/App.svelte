@@ -1,6 +1,8 @@
 <script lang="ts">
   import { listen } from '@tauri-apps/api/event';
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
+  import { fly } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
   import * as api from './lib/api';
   import type { Host, Snippet } from './lib/api';
   import { listAddons } from './lib/addons';
@@ -23,6 +25,7 @@
   import KeysView from './views/KeysView.svelte';
   import KnownHostsView from './views/KnownHostsView.svelte';
   import SnippetsView from './views/SnippetsView.svelte';
+  import HostsView from './views/HostsView.svelte';
 
   interface Tab {
     key: string;
@@ -157,6 +160,16 @@
     showSession = true;
   }
 
+  /** 搜索框里输入 ssh user@host：保存为一台新主机（同地址同用户的已有主机直接复用）并连接 */
+  async function quickConnect(t: { username: string; address: string; port: number }) {
+    const existing = data.hosts.find((h) => h.address === t.address && h.username === t.username && h.port === t.port);
+    if (existing) return openTab(existing);
+    const h: Host = { ...api.blankHost(), name: `${t.username}@${t.address}`, address: t.address, port: t.port, username: t.username };
+    await api.save('host', h);
+    await loadAll();
+    openTab(h);
+  }
+
   function closeTab(key: string) {
     const i = tabs.findIndex((t) => t.key === key);
     if (i < 0) return;
@@ -207,13 +220,14 @@
       e.preventDefault();
       showSession = false;
       view = 'hosts';
-      searchInput?.focus();
+      void tick().then(() => searchInput?.focus());
     } else if (/^[1-9]$/.test(e.key) && e.metaKey) {
       const t = tabs[Number(e.key) - 1];
       if (t) {
         e.preventDefault();
         activeKey = t.key;
         view = 'hosts';
+        showSession = true;
       }
     }
   }
@@ -234,21 +248,21 @@
 {:else}
   <div class="app" class:mobile>
     {#if !mobile && !immersive}
+    <div class="sbw" in:fly={{ x: -28, duration: 200, easing: cubicOut }}>
     <Sidebar
-      hosts={data.hosts}
-      connected={connectedIds}
       {macInset}
       {view}
       {counts}
       {sync}
-      bind:searchInput
-      onview={(v) => (view = v)}
-      onconnect={openTab}
-      onedit={(h) => (editing = { host: h, isNew: false })}
+      onview={(v) => {
+        view = v;
+        if (v === 'hosts') showSession = false;
+      }}
       onnew={() => (editing = { host: api.blankHost(), isNew: true })}
       onsettings={() => (settingsTab = 'appearance')}
       onsync={onSyncClick}
     />
+    </div>
     {/if}
 
     <main>
@@ -339,7 +353,7 @@
       {/if}
       <div class="stage" class:focus={view === 'hosts' && !!activeTab} class:immersive>
         {#each tabs as t (t.key)}
-          <div class="ws" class:hidden={view !== 'hosts' || t.key !== activeKey || (mobile && !showSession)}>
+          <div class="ws" class:hidden={view !== 'hosts' || t.key !== activeKey || !showSession}>
             <div class="term-area">
               {#if isTerminal(t.host)}
                 <TerminalPane
@@ -382,26 +396,16 @@
             onnew={() => (editing = { host: api.blankHost(), isNew: true })}
             onknown={() => (view = 'known')}
           />
-        {:else if tabs.length === 0}
-          <div class="empty">
-            <Logo size={56} blink />
-            {#if data.hosts.length === 0}
-              <h1>欢迎使用 Vornel</h1>
-              <p>添加第一台主机，开始连接。</p>
-              <button class="btn" type="button" onclick={() => (editing = { host: api.blankHost(), isNew: true })}>
-                <Icon name="plus" size={14} stroke={2} />新建主机
-              </button>
-            {:else}
-              <h1>选择一台主机开始连接</h1>
-              <p>在左侧点击主机即可打开新会话。</p>
-            {/if}
-            <div class="keys">
-              <span><kbd>⌘K</kbd> 搜索</span>
-              <span><kbd>⌘N</kbd> 新建主机</span>
-              <span><kbd>⌘W</kbd> 关闭标签</span>
-              <span><kbd>⌘,</kbd> 设置</span>
-            </div>
-          </div>
+        {:else if view === 'hosts' && (!showSession || !activeTab)}
+          <HostsView
+            hosts={data.hosts}
+            connected={connectedIds}
+            bind:searchInput
+            onconnect={openTab}
+            onedit={(h) => (editing = { host: h, isNew: false })}
+            onnew={(g) => (editing = { host: { ...api.blankHost(), group: g }, isNew: true })}
+            onquick={quickConnect}
+          />
         {/if}
       </div>
 
@@ -567,6 +571,16 @@
     inset: 0;
     display: flex;
   }
+  /* 切到会话时淡入 */
+  .ws:not(.hidden) {
+    animation: ws-in 180ms var(--ease) both;
+  }
+  @keyframes ws-in {
+    from {
+      opacity: 0;
+      transform: scale(0.995);
+    }
+  }
   .ws.hidden {
     visibility: hidden;
     pointer-events: none;
@@ -576,42 +590,13 @@
     flex: 1;
     min-width: 0;
   }
+  .sbw {
+    display: flex;
+    flex: none;
+  }
   .sftp-area {
     width: min(620px, 50%);
     border-left: 1px solid var(--line);
-  }
-  .empty {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    text-align: center;
-    color: var(--mut);
-  }
-  .empty h1 {
-    margin: 12px 0 0;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--fg);
-  }
-  .empty p {
-    margin: 0 0 8px;
-  }
-  .keys {
-    display: flex;
-    gap: 18px;
-    margin-top: 18px;
-    font-size: 12px;
-  }
-  kbd {
-    font: 500 11px var(--f-mono);
-    padding: 1px 6px;
-    border-radius: 4px;
-    border: 1px solid var(--line2);
-    margin-right: 4px;
   }
   .notice {
     display: flex;

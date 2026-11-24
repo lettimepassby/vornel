@@ -40,9 +40,13 @@ async function find(locator, timeout = 20000) {
 // 沉浸模式下侧边栏是隐藏的：要点侧边栏里的东西时，先点标签栏的“主机”按钮把它调出来（用户的真实操作路径）
 async function showSidebarIfNeeded(locator) {
   const q = String(locator.value ?? locator);
-  if (!/aside|主导航|新建主机|"设置"/.test(q)) return;
+  if (!/aside|主导航|新建主机|"设置"|主机列表/.test(q)) return;
   const home = await driver.findElements(By.css('button.home-btn'));
   if (home.length && (await home[0].isDisplayed())) await home[0].click();
+  // 主机卡片只在“主机”页显示：从其他页面（密钥串等）先切回主机页
+  if (/主机列表/.test(q) && !(await driver.findElements(By.css('section[aria-label="主机列表"]'))).length) {
+    await (await driver.findElement(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'))).click();
+  }
 }
 async function click(locator) {
   await showSidebarIfNeeded(locator);
@@ -84,7 +88,7 @@ async function terminalOf(key) {
 /** 打开一个主机标签，返回它的终端键（主机 id）。 */
 async function openTerminal(name) {
   const before = await terminalKeys();
-  await click(By.xpath(`//aside//button[contains(., ${JSON.stringify(name)})]`));
+  await click(By.xpath(`//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., ${JSON.stringify(name)})]`));
   let key;
   await driver.wait(
     async () => {
@@ -132,7 +136,7 @@ async function addHost({ protocol, address, port, name, user }) {
   if (user !== undefined) await type(field('用户名'), user);
   await shot(`dialog-${name}`);
   await click(By.xpath('//dialog//button[@type="submit"]'));
-  await find(By.xpath(`//aside//button[contains(., ${JSON.stringify(name)})]`));
+  await find(By.xpath(`//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., ${JSON.stringify(name)})]`));
 }
 
 const results = [];
@@ -183,7 +187,7 @@ try {
   // ------------------------------------------------------------ VNC
   await check('VNC：连接真实 x11vnc 并显示桌面', async () => {
     await addHost({ protocol: 'VNC', address: '127.0.0.1', port: env('VNC_PORT'), name: 'e2e-vnc' });
-    await click(By.xpath('//aside//button[contains(., "e2e-vnc")]'));
+    await click(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-vnc")]'));
     const canvas = '//canvas[@aria-label="远程桌面 e2e-vnc"]';
     const pw = await find(By.xpath(`${canvas}/following-sibling::div//input[@type="password"]`));
     await pw.sendKeys(env('VNC_PASS'));

@@ -39,9 +39,13 @@ async function find(locator, timeout = 20000) {
 // 沉浸模式下侧边栏是隐藏的：要点侧边栏里的东西时，先点标签栏的“主机”按钮把它调出来（用户的真实操作路径）
 async function showSidebarIfNeeded(locator) {
   const q = String(locator.value ?? locator);
-  if (!/aside|主导航|新建主机|"设置"/.test(q)) return;
+  if (!/aside|主导航|新建主机|"设置"|主机列表/.test(q)) return;
   const home = await driver.findElements(By.css('button.home-btn'));
   if (home.length && (await home[0].isDisplayed())) await home[0].click();
+  // 主机卡片只在“主机”页显示：从其他页面（密钥串等）先切回主机页
+  if (/主机列表/.test(q) && !(await driver.findElements(By.css('section[aria-label="主机列表"]'))).length) {
+    await (await driver.findElement(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'))).click();
+  }
 }
 async function click(locator) {
   await showSidebarIfNeeded(locator);
@@ -79,7 +83,7 @@ async function addHost({ protocol, address, port, name, user, password }) {
   if (user !== undefined) await type(field('用户名'), user);
   await shot(`dialog-${name}`);
   await click(By.xpath('//dialog//button[@type="submit"]'));
-  await find(By.xpath(`//aside//button[contains(., ${JSON.stringify(name)})]`));
+  await find(By.xpath(`//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., ${JSON.stringify(name)})]`));
   void password;
 }
 
@@ -121,7 +125,7 @@ try {
   });
 
   await check('输入密码连接真实 sshd', async () => {
-    await click(By.xpath('//aside//button[contains(., "e2e-ssh")]'));
+    await click(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-ssh")]'));
     // 在密码框里按回车提交（用户最常见的操作）
     // 先用鼠标点击密码框（会被遮挡时这里会报 ElementClickIntercepted），再用键盘输入
     const pw = await click(By.xpath('//div[@role="application"]//input[@type="password"]'));
@@ -227,8 +231,11 @@ try {
 
   await check('RDP 连接真实 xrdp 并显示画面', async () => {
     await click(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'));
+    // 连接过的 SSH 主机已自动识别出系统（CI 运行在 Ubuntu 上）
+    await find(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-ssh")]//span[contains(@class,"tile")][@title="Ubuntu"]'), 20000);
+    await shot('hosts-grid');
     await addHost({ protocol: 'RDP', address: '127.0.0.1', port: env('RDP_PORT'), name: 'e2e-rdp', user: env('RDP_USER') });
-    await click(By.xpath('//aside//button[contains(., "e2e-rdp")]'));
+    await click(By.xpath('//section[@aria-label="主机列表"]//button[contains(@class,"card")][contains(., "e2e-rdp")]'));
     const pw = await type(By.xpath('//canvas[starts-with(@aria-label, "远程桌面")]/following-sibling::div//input[@type="password"]'), env('RDP_PASS'));
     await pw.sendKeys(Key.ENTER);
     await find(By.xpath('//div[@role="tablist"]//div[contains(@class,"on")]//span[contains(@class,"dot") and contains(@class,"ok")]'), 45000);
@@ -246,6 +253,22 @@ try {
     );
     await new Promise((r) => setTimeout(r, 2000));
     await shot('rdp');
+  });
+  await check('搜索框快速连接 ssh user@host', async () => {
+    await click(By.xpath('//nav[@aria-label="主导航"]//button[contains(., "主机")]'));
+    const bar = await find(By.css('section[aria-label="主机列表"] input[aria-label="搜索主机"]'));
+    // “@”需要 Shift，WebKitWebDriver 输入时可能打乱顺序：直接设置值并触发 input 事件
+    await driver.executeScript(
+      'const el = arguments[0]; el.focus(); el.value = arguments[1]; el.dispatchEvent(new Event("input", { bubbles: true }));',
+      bar,
+      `ssh ${env('SSH_USER')}@localhost -p ${env('SSH_PORT')}`,
+    );
+    await find(By.xpath(`//section[@aria-label="主机列表"]//button[@type="submit"][contains(., "连接 ${env('SSH_USER')}@localhost")]`));
+    await bar.sendKeys(Key.ENTER);
+    // 打开了新会话标签，等待输入密码
+    await find(By.xpath(`//div[@role="tablist"]//*[contains(., "${env('SSH_USER')}@localhost")]`), 15000);
+    await find(By.xpath('//div[@role="application"]//input[@type="password"]'), 15000);
+    await shot('quick-connect');
   });
 } finally {
   await driver.quit().catch(() => {});

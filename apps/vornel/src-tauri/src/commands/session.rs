@@ -31,6 +31,10 @@ pub enum SessionEvent {
         new: bool,
     },
     Connected,
+    /// 识别到远端系统（主机记录已更新）
+    Os {
+        os: String,
+    },
     Closed {
         exit_status: Option<u32>,
         reason: Option<String>,
@@ -266,6 +270,7 @@ pub async fn session_open(
         .await
         .map_err(err)?;
 
+    let detect_conn = conn.clone();
     state.sessions.lock().await.insert(
         session_id.clone(),
         Arc::new(Session::Ssh {
@@ -275,6 +280,39 @@ pub async fn session_open(
         }),
     );
     let _ = on_event.send(SessionEvent::Connected);
+
+    // 后台识别远端系统，用于主机列表图标（失败不影响会话）
+    {
+        let conn = detect_conn;
+        let app = app.clone();
+        let events = on_event.clone();
+        let known = host.os.clone();
+        tauri::async_runtime::spawn(async move {
+            let Ok((out, _)) = conn
+                .exec("cat /etc/os-release 2>/dev/null; uname -s 2>/dev/null")
+                .await
+            else {
+                return;
+            };
+            let Some(os) = vornel_core::parse_os(&String::from_utf8_lossy(&out)) else {
+                return;
+            };
+            if known.as_deref() == Some(os.as_str()) {
+                return;
+            }
+            let state = app.state::<AppState>();
+            let mut guard = state.vault.lock().await;
+            if let Some(v) = guard.as_mut() {
+                if let Ok(Some(h)) = v.get::<Host>(host_id) {
+                    let _ = v.put(&Host {
+                        os: Some(os.clone()),
+                        ..h
+                    });
+                    let _ = events.send(SessionEvent::Os { os });
+                }
+            }
+        });
+    }
     Ok(session_id)
 }
 
