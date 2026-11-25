@@ -101,6 +101,10 @@ export interface Prefs {
   cursorBlink: boolean;
   /** SSH 终端底部显示服务器资源栏 */
   showStats: boolean;
+  /** 终端命令联想 */
+  commandSuggest: boolean;
+  /** 记住执行过的命令用于联想（只保存在本机） */
+  commandHistory: boolean;
 }
 
 export interface GroupStyle {
@@ -141,6 +145,18 @@ export const list = <T>(kind: Kind) => invoke<T[]>('records_list', { kind });
 export const hostTouch = (hostId: string) => invoke<number>('host_touch', { hostId });
 
 export const secretGet = (hostId: string) => invoke<string | null>('secret_get', { hostId });
+
+/** 命令历史（命令联想用，只保存在本机、加密，不同步） */
+export interface HistoryEntry {
+  command: string;
+  hostId: string | null;
+  count: number;
+  lastUsed: number;
+}
+export const historyList = () => invoke<HistoryEntry[]>('history_list');
+export const historyAdd = (hostId: string | null, command: string) => invoke<boolean>('history_add', { hostId, command });
+export const historyRemove = (command: string) => invoke<void>('history_remove', { command });
+export const historyClear = () => invoke<void>('history_clear');
 
 export const save = (kind: Exclude<Kind, 'known_host'>, value: unknown) =>
   invoke<void>('record_save', { kind, value });

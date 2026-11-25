@@ -2,11 +2,18 @@
 //!
 //! 所有需要保存、同步的数据都实现 [`Record`]，由 `vornel-vault` 加密存储、由 `vornel-sync` 同步。
 
+mod history;
 mod model;
 mod stats;
 
+pub use history::HistoryEntry;
 pub use model::*;
 pub use stats::{parse_stats, ServerStats, STATS_COMMAND};
+
+/// 命令历史的整理与记录（命令联想）。
+pub mod command_history {
+    pub use crate::history::{normalize, record, remove, COMMAND_MAX, HISTORY_LIMIT};
+}
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;

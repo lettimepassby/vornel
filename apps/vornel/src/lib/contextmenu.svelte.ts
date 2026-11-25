@@ -9,6 +9,8 @@ export type MenuItem =
       shortcut?: string;
       danger?: boolean;
       disabled?: boolean;
+      /** 开关项：显示勾选状态 */
+      checked?: boolean;
       action?: () => unknown;
       submenu?: MenuItem[];
     }

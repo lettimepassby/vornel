@@ -401,6 +401,12 @@ pub struct Prefs {
     /// SSH 终端底部显示服务器资源栏
     #[serde(default = "default_true")]
     pub show_stats: bool,
+    /// 终端命令联想（输入时根据历史、代码片段和常用命令给出建议）
+    #[serde(default = "default_true")]
+    pub command_suggest: bool,
+    /// 记住执行过的命令用于联想（只保存在本机，不同步）
+    #[serde(default = "default_true")]
+    pub command_history: bool,
 }
 
 fn default_auto() -> String {
@@ -456,6 +462,8 @@ impl Default for Prefs {
             cursor_style: default_cursor(),
             cursor_blink: true,
             show_stats: true,
+            command_suggest: true,
+            command_history: true,
         }
     }
 }

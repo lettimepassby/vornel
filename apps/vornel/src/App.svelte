@@ -276,6 +276,7 @@
       { label: '粘贴', icon: 'file', shortcut: mod('V'), disabled: t.status.state !== 'connected', action: async () => p.paste(await readText()) },
       { label: '全选', shortcut: mod('A'), action: () => p.selectAll() },
       { label: '清屏', icon: 'refresh', action: () => p.clear() },
+      { label: '命令联想', checked: prefs.commandSuggest, action: () => void (prefs.commandSuggest = !prefs.commandSuggest) },
     ];
     if (data.snippets.length) {
       items.push('sep', {

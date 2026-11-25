@@ -20,6 +20,8 @@ const DEFAULT_PREFS: Prefs = {
   cursorStyle: 'block',
   cursorBlink: true,
   showStats: true,
+  commandSuggest: true,
+  commandHistory: true,
 };
 
 function cachedPrefs(): Prefs {

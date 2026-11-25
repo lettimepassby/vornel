@@ -123,6 +123,15 @@
       <p class="hint">经已有连接每 3 秒读取一次 /proc，只在会话可见时读取，对服务器几乎没有负担。仅支持 Linux。</p>
     </section>
 
+    <section>
+      <h3>命令联想</h3>
+      <label class="check"><input type="checkbox" bind:checked={prefs.commandSuggest} />输入时联想命令</label>
+      <label class="check" class:dim={!prefs.commandSuggest}
+        ><input type="checkbox" bind:checked={prefs.commandHistory} disabled={!prefs.commandSuggest} />记住执行过的命令</label
+      >
+      <p class="hint">→ 补全，↑ ↓ 选择，Esc 关闭。命令历史只加密保存在本机，不同步。</p>
+    </section>
+
     <button class="btn ghost reset" type="button" onclick={reset}><Icon name="refresh" size={14} />恢复默认</button>
   </div>
 </aside>
@@ -238,6 +247,9 @@
     gap: 8px;
     margin-top: 10px;
     font-size: 13px;
+  }
+  .check.dim {
+    opacity: 0.5;
   }
   .hint {
     margin: 6px 0 0;

@@ -176,6 +176,37 @@ try {
     await shot('ssh-command');
   });
 
+  await check('命令联想：输入时列出执行过的命令，→ 补全；右键菜单可以关闭', async () => {
+    const scr = await find(By.css('div[role="application"] .xterm-screen'));
+    await scr.click();
+    const count = async (needle) => (await terminalText()).split(needle).length - 1;
+    const pref = () => driver.executeScript(`return JSON.parse(localStorage.getItem('vornel.prefs') || '{}').commandSuggest;`);
+    const list = By.css('div[role="listbox"][aria-label="命令联想"]');
+    const before = await count('e2e-42');
+    // 上一步执行过 printf e2e-; seq 42 42：敲出开头就应该联想到它
+    for (const ch of 'printf e2') await driver.actions().sendKeys(ch).perform();
+    await find(By.xpath('//div[@role="listbox"][@aria-label="命令联想"]//div[@role="option"][contains(., "printf e2e-; seq 42 42")]'), 10000);
+    await shot('suggest');
+    await driver.actions().sendKeys(Key.ARROW_RIGHT).perform();
+    await driver.wait(async () => !(await driver.findElements(list)).length, 5000, '补全后联想列表没有收起');
+    await driver.actions().sendKeys(Key.ENTER).perform();
+    await driver.wait(async () => (await count('e2e-42')) > before, 10000, '补全出来的命令没有执行');
+    // 右键菜单关掉联想：再输入也不弹出
+    await driver.actions().contextClick(scr).perform();
+    await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitemcheckbox"][contains(., "命令联想")]'));
+    await driver.wait(async () => (await pref()) === false, 5000, '命令联想没有关闭');
+    await scr.click();
+    for (const ch of 'printf e2') await driver.actions().sendKeys(ch).perform();
+    await new Promise((r) => setTimeout(r, 1500));
+    if ((await driver.findElements(list)).length) throw new Error('关闭后仍然弹出联想');
+    for (let i = 0; i < 'printf e2'.length; i++) await driver.actions().sendKeys(Key.BACK_SPACE).perform();
+    // 重新打开（后面的测试按默认设置运行）
+    await driver.actions().contextClick(scr).perform();
+    await click(By.xpath('//div[contains(@class,"cm")]//button[@role="menuitemcheckbox"][contains(., "命令联想")]'));
+    await driver.wait(async () => (await pref()) === true, 5000, '命令联想没有重新打开');
+    await scr.click();
+  });
+
   await check('终端选中即复制', async () => {
     // 拦截剪贴板写入，记录复制的内容（测试环境里读系统剪贴板不可靠）
     // 先清空系统剪贴板，复制后再从系统剪贴板读回

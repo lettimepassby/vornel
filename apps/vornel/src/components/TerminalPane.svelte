@@ -23,7 +23,10 @@
   const isMac = /Macintosh|Mac OS X|iPhone|iPad/.test(navigator.userAgent);
   import { badge, type BadgeKind } from '../lib/themes';
   import { resolveScheme } from '../lib/terminal-schemes';
+  import { InputLine } from '../lib/inputline';
+  import { forgetCommand, loadHistory, recordCommand, suggest, type Suggestion } from '../lib/suggest';
   import StatsBar from './StatsBar.svelte';
+  import Icon from './Icon.svelte';
 
   let {
     host,
@@ -62,6 +65,8 @@
 
   let container = $state<HTMLDivElement>();
   let term: Terminal | undefined;
+  let line: InputLine | undefined;
+  let paneEl = $state<HTMLDivElement>();
   let fit: FitAddon | undefined;
   let webgl: WebglAddon | undefined;
   let sessionId: string | null = null;
@@ -104,13 +109,129 @@
 
   /** 写入会话但不抢焦点（分屏同步输入） */
   export function write(data: string) {
+    line?.input(data);
     if (sessionId) void api.sessionWrite(sessionId, data).catch(() => {});
   }
 
   /** 把文字发送到终端（代码片段等）。 */
   export function send(text: string) {
+    line?.input(text);
     if (sessionId) void api.sessionWrite(sessionId, text).catch(() => {});
     term?.focus();
+  }
+
+  /** 用户在这个终端里的输入：键盘、粘贴、接受联想 */
+  function userInput(out: string) {
+    line?.input(out);
+    if (sessionId) void api.sessionWrite(sessionId, out).catch(() => {});
+    oninput?.(out);
+    if (out === '\r' || out === '\x03') sug = [];
+    // 敲了字（不是方向键等）之后，之前按 Esc 关掉的联想重新开始
+    if (!out.startsWith('\x1b') || out.startsWith('\x1b[200~')) sugHidden = false;
+    scheduleSuggest();
+  }
+
+  // ---- 命令联想：输入时在光标下方列出以当前输入开头的命令
+  let sug = $state<Suggestion[]>([]);
+  let sugSel = $state(0);
+  /** 联想所基于的输入（列表里这部分显示得淡一些） */
+  let sugTyped = $state('');
+  let sugPos = $state<{ left: number; top?: number; bottom?: number }>({ left: 0 });
+  /** 按了 Esc 或刚接受了联想：直到下次输入前不再弹出 */
+  let sugHidden = false;
+  let sugFrame = 0;
+  let termFont = $state('monospace');
+
+  function scheduleSuggest() {
+    if (!sugFrame) {
+      sugFrame = requestAnimationFrame(() => {
+        sugFrame = 0;
+        updateSuggest();
+      });
+    }
+  }
+
+  function updateSuggest() {
+    if (!term || !line || !prefs.commandSuggest || !active || sugHidden || pane.state !== 'connected') {
+      if (sug.length) sug = [];
+      return;
+    }
+    const r = line.read();
+    if (r === 'pending') return; // 回显还没到，保持现状
+    const b = term.buffer.active;
+    if (!r || !r.atEnd || b.viewportY !== b.baseY) {
+      if (sug.length) sug = [];
+      return;
+    }
+    const list = suggest(r.text, host.id);
+    if (!list.length) {
+      if (sug.length) sug = [];
+      return;
+    }
+    const prev = sug[sugSel]?.text;
+    sug = list;
+    sugTyped = r.text;
+    sugSel = Math.max(0, list.findIndex((x) => x.text === prev));
+    placeSuggest(r.startX, r.startY);
+  }
+
+  /** 列表放在输入开始处的下一行；靠近底部时放到上方 */
+  function placeSuggest(startX: number, startY: number) {
+    const screen = container?.querySelector('.xterm-screen');
+    if (!term || !screen || !paneEl) return;
+    const sr = screen.getBoundingClientRect();
+    const pr = paneEl.getBoundingClientRect();
+    const cw = sr.width / term.cols;
+    const ch = sr.height / term.rows;
+    const row = term.buffer.active.cursorY;
+    const col = startY === row ? startX : 0;
+    const left = Math.max(8, Math.min(sr.left - pr.left + col * cw - 6, pr.width - 340));
+    const below = sr.top - pr.top + (row + 1) * ch + 4;
+    const spaceBelow = pr.height - below;
+    // 下方放不下时放到输入行（可能自动换行占了几行）的上方
+    const topRow = Math.max(0, startY);
+    if (spaceBelow < 200 && topRow * ch > spaceBelow) {
+      sugPos = { left, bottom: pr.bottom - (sr.top + topRow * ch) + 4 };
+    } else {
+      sugPos = { left, top: below };
+    }
+  }
+
+  function acceptSuggestion(i: number) {
+    const s = sug[i];
+    if (!s || !line) return;
+    // 键入的文字可能比屏幕回显更新：只要建议仍以它开头，补上剩下的部分
+    const cur = line.exact ? line.typed : sugTyped;
+    sug = [];
+    if (!s.text.startsWith(cur)) return;
+    const rest = s.text.slice(cur.length);
+    if (rest) userInput(rest);
+    sugHidden = true;
+    term?.focus();
+  }
+
+  function forgetSuggestion(i: number) {
+    const s = sug[i];
+    if (!s || s.source !== 'history') return;
+    forgetCommand(s.text);
+    sug = sug.filter((_, j) => j !== i);
+    sugSel = Math.min(sugSel, Math.max(0, sug.length - 1));
+    scheduleSuggest();
+  }
+
+  /** 联想列表打开时接管 ↑ ↓ → Esc（以及 Shift+Delete 删除历史）；返回 true 表示已处理 */
+  function suggestKey(e: KeyboardEvent) {
+    if (!sug.length || e.type !== 'keydown' || e.isComposing || e.altKey || e.ctrlKey || e.metaKey) return false;
+    if (e.key === 'ArrowDown' && !e.shiftKey) sugSel = (sugSel + 1) % sug.length;
+    else if (e.key === 'ArrowUp' && !e.shiftKey) sugSel = (sugSel - 1 + sug.length) % sug.length;
+    else if (e.key === 'ArrowRight' && !e.shiftKey) acceptSuggestion(sugSel);
+    else if (e.key === 'Escape') {
+      sug = [];
+      sugHidden = true;
+    } else if (e.key === 'Delete' && e.shiftKey && sug[sugSel]?.source === 'history') forgetSuggestion(sugSel);
+    else return false;
+    e.preventDefault();
+    return true;
   }
 
   // ---- 右键菜单用到的终端操作
@@ -247,6 +368,7 @@
     // 顺序很重要：先等字体真正加载，再改字体、清字形缓存、重新计算行列
     await ensureFamily(family);
     term.options.fontFamily = familyStack(family, 'monospace');
+    termFont = term.options.fontFamily ?? 'monospace';
     term.options.fontSize = prefs.terminalFontSize;
     term.options.lineHeight = prefs.terminalLineHeight ?? pack.lineHeight;
     term.options.theme = resolveScheme(prefs.terminalTheme, prefs.theme).theme;
@@ -289,6 +411,15 @@
         macOptionIsMeta: true,
         screenReaderMode: untrack(() => prefs.screenReader),
       });
+      termFont = term.options.fontFamily ?? 'monospace';
+      line = new InputLine(term, (cmd) => {
+        if (prefs.commandSuggest && prefs.commandHistory) recordCommand(host.id, cmd);
+      });
+      if (untrack(() => prefs.commandSuggest)) void loadHistory();
+      term.onWriteParsed(() => {
+        line?.flush();
+        if (sug.length || line?.tracking) scheduleSuggest();
+      });
       fit = new FitAddon();
       term.loadAddon(fit);
       term.open(el);
@@ -317,6 +448,7 @@
         if (prefs.copyOnSelect && term?.hasSelection()) void copyText(term.getSelection());
       });
       term.attachCustomKeyEventHandler((e) => {
+        if (suggestKey(e)) return false;
         const isCopy = e.type === 'keydown' && e.key.toLowerCase() === 'c' && (isMac ? e.metaKey : e.ctrlKey && e.shiftKey);
         if (isCopy && term?.hasSelection()) {
           void copyText(term.getSelection());
@@ -332,8 +464,7 @@
           ctrlLatch = false;
           onctrlused?.();
         }
-        if (sessionId) void api.sessionWrite(sessionId, out).catch(() => {});
-        oninput?.(out);
+        userInput(out);
       });
 
       const h = untrack(() => host);
@@ -355,6 +486,9 @@
       disposed = true;
       delete (window as unknown as { __vornelTerminals?: Record<string, () => string> }).__vornelTerminals?.[hookKey];
       ro.disconnect();
+      cancelAnimationFrame(sugFrame);
+      line?.dispose();
+      line = undefined;
       if (sessionId) void api.sessionClose(sessionId).catch(() => {});
       sessionId = null;
       webgl?.dispose();
@@ -374,6 +508,15 @@
     void prefs.cursorStyle;
     void prefs.cursorBlink;
     void applyAppearance();
+  });
+
+  // 切走、关掉联想、断开连接时收起列表；打开联想时预读命令历史
+  $effect(() => {
+    if (!active || !prefs.commandSuggest || pane.state !== 'connected') {
+      sug = [];
+      sugHidden = false;
+    }
+    if (prefs.commandSuggest) void loadHistory();
   });
 
   // 回到前台时，断开的会话自动重连（已保存凭据的情况下）
@@ -401,8 +544,59 @@
   });
 </script>
 
-<div class="pane" role="application" aria-label="终端 {host.name}" style:background={paneBg}>
+<div class="pane" role="application" aria-label="终端 {host.name}" style:background={paneBg} bind:this={paneEl}>
   <div class="term" bind:this={container} style:bottom={showStatsBar ? '30px' : '6px'}></div>
+  {#if sug.length}
+    <div
+      class="suggest"
+      role="listbox"
+      aria-label="命令联想"
+      style:left="{sugPos.left}px"
+      style:top={sugPos.top != null ? `${sugPos.top}px` : undefined}
+      style:bottom={sugPos.bottom != null ? `${sugPos.bottom}px` : undefined}
+      style:--sg-bg={scheme.theme.background}
+      style:--sg-fg={scheme.theme.foreground}
+      style:--sg-acc={scheme.theme.cursor ?? scheme.theme.blue}
+      style:font-family={termFont}
+      style:font-size="{Math.max(11, prefs.terminalFontSize - 1)}px"
+    >
+      {#each sug as s, i (s.text)}
+        <div
+          class="sg"
+          class:on={i === sugSel}
+          role="option"
+          tabindex="-1"
+          aria-selected={i === sugSel}
+          onmousedown={(e) => {
+            e.preventDefault();
+            acceptSuggestion(i);
+          }}
+          onmouseenter={() => (sugSel = i)}
+        >
+          <span class="src" title={s.source === 'history' ? '执行过的命令' : s.source === 'snippet' ? '代码片段' : '常用命令'}>
+            <Icon name={s.source === 'history' ? 'clock' : s.source === 'snippet' ? 'code' : 'terminal'} size={12} />
+          </span>
+          <span class="cmd"><span class="typed">{sugTyped}</span>{s.text.slice(sugTyped.length)}</span>
+          {#if s.label}<span class="lbl">{s.label}</span>{/if}
+          {#if s.source === 'history'}
+            <button
+              class="forget"
+              type="button"
+              tabindex="-1"
+              title="从历史中删除（Shift+Delete）"
+              aria-label="从历史中删除"
+              onmousedown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                forgetSuggestion(i);
+              }}><Icon name="close" size={11} /></button
+            >
+          {/if}
+        </div>
+      {/each}
+      <div class="foot"><kbd>→</kbd>补全<kbd>↑↓</kbd>选择<kbd>Esc</kbd>关闭</div>
+    </div>
+  {/if}
   {#if showStatsBar && sid}
     <div class="stats-wrap" style:color={scheme.theme.foreground}>
       <StatsBar sessionId={sid} active={visible ?? active} onunsupported={() => (statsOk = false)} />
@@ -454,6 +648,113 @@
 </div>
 
 <style>
+  /* 命令联想：颜色取自终端配色，和终端融为一体 */
+  .suggest {
+    position: absolute;
+    /* 高于 xterm 的无障碍层与滚动条（10–11），低于连接遮罩（50） */
+    z-index: 40;
+    min-width: 220px;
+    max-width: min(560px, calc(100% - 16px));
+    padding: 4px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--sg-bg) 90%, var(--sg-fg));
+    color: var(--sg-fg);
+    border: 1px solid color-mix(in srgb, var(--sg-fg) 16%, transparent);
+    box-shadow: 0 10px 28px rgb(0 0 0 / 0.28);
+    animation: sg-in 110ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    user-select: none;
+  }
+  @keyframes sg-in {
+    from {
+      opacity: 0;
+      transform: translateY(-3px);
+    }
+  }
+  .sg {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 1.9em;
+    padding: 0 6px 0 7px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  .sg.on {
+    background: color-mix(in srgb, var(--sg-acc) 22%, transparent);
+  }
+  .src {
+    display: grid;
+    place-items: center;
+    flex: none;
+    opacity: 0.55;
+  }
+  .sg.on .src {
+    color: var(--sg-acc);
+    opacity: 1;
+  }
+  .cmd {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: pre;
+  }
+  .cmd .typed {
+    opacity: 0.5;
+  }
+  .lbl {
+    flex: none;
+    max-width: 40%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--f-ui);
+    font-size: 11px;
+    opacity: 0.55;
+  }
+  .forget {
+    display: none;
+    place-items: center;
+    flex: none;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: inherit;
+    opacity: 0.6;
+    cursor: pointer;
+  }
+  .sg:hover .forget {
+    display: grid;
+  }
+  .forget:hover {
+    opacity: 1;
+    background: color-mix(in srgb, var(--sg-fg) 14%, transparent);
+  }
+  .foot {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 7px 2px;
+    margin-top: 3px;
+    border-top: 1px solid color-mix(in srgb, var(--sg-fg) 10%, transparent);
+    font-family: var(--f-ui);
+    font-size: 10.5px;
+    opacity: 0.6;
+  }
+  .foot kbd {
+    margin-left: 6px;
+    padding: 0 4px;
+    border-radius: 3px;
+    font: inherit;
+    background: color-mix(in srgb, var(--sg-fg) 12%, transparent);
+  }
+  .foot kbd:first-child {
+    margin-left: 0;
+  }
+
   /* 认证失败时轻轻摇一下，提示需要重新输入 */
   .card.shake {
     animation: shake 360ms cubic-bezier(0.36, 0.07, 0.19, 0.97);

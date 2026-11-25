@@ -104,7 +104,8 @@
           class:danger={it.danger}
           class:on={active === i}
           type="button"
-          role="menuitem"
+          role={it.checked === undefined ? 'menuitem' : 'menuitemcheckbox'}
+          aria-checked={it.checked}
           disabled={it.disabled}
           aria-haspopup={it.submenu ? 'menu' : undefined}
           onmouseenter={(e) => {
@@ -113,7 +114,7 @@
           }}
           onclick={() => run(it)}
         >
-          <span class="ic">{#if it.icon}<Icon name={it.icon} size={14} />{/if}</span>
+          <span class="ic">{#if it.checked}<Icon name="check" size={14} />{:else if it.icon && it.checked === undefined}<Icon name={it.icon} size={14} />{/if}</span>
           <span class="lb">{it.label}</span>
           {#if it.shortcut}<kbd>{it.shortcut}</kbd>{/if}
           {#if it.submenu}<span class="arrow"><Icon name="chevron" size={13} /></span>{/if}

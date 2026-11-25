@@ -11,6 +11,7 @@
   import FontAddons from './FontAddons.svelte';
   import Icon from './Icon.svelte';
   import { copyText } from '../lib/clipboard';
+  import { clearHistory, historyCount } from '../lib/suggest';
 
   let { onclose, initialTab = 'appearance' }: { onclose: () => void; initialTab?: Tab } = $props();
 
@@ -236,6 +237,24 @@
   }
 
   // ---------------------------------------------------------------- 导入
+  // 命令历史：显示条数，可一键清空
+  let histCount = $state<number | null>(null);
+  let confirmClearHist = $state(false);
+  $effect(() => {
+    void historyCount()
+      .then((n) => (histCount = n))
+      .catch(() => {});
+  });
+  async function clearHist() {
+    if (!confirmClearHist) {
+      confirmClearHist = true;
+      return;
+    }
+    confirmClearHist = false;
+    await clearHistory();
+    histCount = 0;
+  }
+
   let importMsg = $state('');
   let importErr = $state('');
   let importBusy = $state(false);
@@ -345,6 +364,31 @@
         <input type="checkbox" bind:checked={prefs.copyOnSelect} />
         <span><b>选中即复制</b><br /><span class="sub">在终端里用鼠标选中文字后自动复制到剪贴板。关闭后可用 ⌘C（Windows 为 Ctrl+Shift+C）复制。</span></span>
       </label>
+
+      <label class="check big">
+        <input type="checkbox" bind:checked={prefs.commandSuggest} />
+        <span
+          ><b>命令联想</b><br /><span class="sub"
+            >在终端里输入时，在光标下方列出执行过的命令、代码片段和常用命令：→ 补全，↑ ↓ 选择，Esc 关闭；回车仍然执行你输入的内容。vim、top 等全屏程序里和输入密码（不回显）时不会出现。</span
+          ></span
+        >
+      </label>
+      <div class="nested" class:off={!prefs.commandSuggest}>
+        <label class="check big">
+          <input type="checkbox" bind:checked={prefs.commandHistory} disabled={!prefs.commandSuggest} />
+          <span
+            ><b>记住执行过的命令</b><br /><span class="sub"
+              >用于联想，只加密保存在本机、不会同步到云端。以空格开头的命令不会被记住；联想列表里按 Shift+Delete 或点 × 可以删掉单条。</span
+            ></span
+          >
+        </label>
+        <div class="hist">
+          <button class="btn ghost" type="button" onclick={clearHist} disabled={!histCount}>
+            {confirmClearHist ? '确认清空？' : '清空命令历史'}
+          </button>
+          {#if histCount !== null}<span class="sub">已记住 {histCount} 条</span>{/if}
+        </div>
+      </div>
 
       <label class="check big">
         <input type="checkbox" bind:checked={prefs.screenReader} />
@@ -648,6 +692,22 @@
   }
   .check.big input {
     margin-top: 3px;
+  }
+  .nested {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: -4px;
+    padding-left: 24px;
+    transition: opacity 160ms;
+  }
+  .nested.off {
+    opacity: 0.5;
+  }
+  .hist {
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
   .item.col {
     flex-direction: column;

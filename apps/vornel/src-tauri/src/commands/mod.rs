@@ -1,5 +1,6 @@
 pub mod clipboard;
 pub mod fonts;
+pub mod history;
 pub mod import;
 pub mod keys;
 pub mod records;
