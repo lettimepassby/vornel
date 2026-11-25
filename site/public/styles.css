@@ -238,6 +238,14 @@ code {
   color: var(--acc);
   font: 600 12px var(--f-mono);
 }
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
 h1 {
   margin: 0 auto;
   max-width: 14ch;
@@ -588,7 +596,7 @@ h1 em {
   padding: 130px 24px 0;
 }
 .sec-head {
-  max-width: 780px;
+  max-width: 980px;
   margin-bottom: 48px;
 }
 .kicker {
@@ -600,13 +608,13 @@ h1 em {
 }
 h2 {
   margin: 0;
-  font-size: clamp(32px, 4.6vw, 54px);
+  font-size: clamp(30px, 4.2vw, 50px);
   line-height: 1.08;
   letter-spacing: -0.035em;
   font-weight: 700;
 }
 .sub,
-.copy > p {
+.copy > p:not(.kicker) {
   margin: 20px 0 0;
   font-size: 18px;
   color: var(--mut);
@@ -997,7 +1005,7 @@ h2 {
 /* ---- 配色板 */
 .palette {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(6, 1fr);
   gap: 12px;
 }
 .pcard {
@@ -1268,6 +1276,9 @@ a.dl:hover {
   .bento {
     grid-template-columns: repeat(2, 1fr);
   }
+  .palette {
+    grid-template-columns: repeat(3, 1fr);
+  }
   .two,
   .two.rev {
     grid-template-columns: 1fr;
@@ -1333,6 +1344,9 @@ a.dl:hover {
   }
   .b.big {
     grid-column: auto;
+  }
+  .palette {
+    grid-template-columns: repeat(2, 1fr);
   }
   .win-body {
     height: 360px;

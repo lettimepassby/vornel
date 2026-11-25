@@ -15,7 +15,8 @@ async function shot(name, { width, height, theme, lang, mobile = false }) {
   }, [theme, lang]);
   const page = await ctx.newPage();
   page.on('pageerror', (e) => problems.push(`${name}: ${e.message}`));
-  page.on('console', (m) => m.type() === 'error' && problems.push(`${name}: console ${m.text()}`));
+  // 本地静态服务没有 Worker，/api/release 404 属于预期
+  page.on('console', (m) => m.type() === 'error' && !(base.startsWith('http://127.') && /404/.test(m.text())) && problems.push(`${name}: console ${m.text()}`));
   await page.goto(base, { waitUntil: 'networkidle' });
   // 滚动一遍，触发所有出现动画
   const h = await page.evaluate(() => document.body.scrollHeight);

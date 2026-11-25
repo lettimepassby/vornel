@@ -11,7 +11,7 @@
     "run_worker_first": ["/api/*"]
   },
   // 绑定自定义域名 vornel.dev（DNS 记录与证书由 Cloudflare 自动创建）
-  "routes": [{ "pattern": "vornel.dev", "custom_domain": true }],
+  "routes": [{ "pattern": "vornel.dev", "zone_id": "246c780710da201796793c6624ded6b2", "custom_domain": true }],
   "workers_dev": false,
   "observability": { "enabled": true }
 }

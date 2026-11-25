@@ -230,11 +230,11 @@
   const quad = $('#quad');
   const panes = $$('.pane pre', quad);
   const paneBoxes = $$('.pane', quad);
-  const qPrompt = (i) => `<span style="color:#9ECE6A">ops@web-0${i + 1}</span>:<span style="color:#7AA2F7">~</span>$ `;
-  const QCMDS = ['sudo apt upgrade -y nginx', 'systemctl reload nginx', 'nginx -v'];
+  const qPrompt = (i) => `<span style="color:#F7768E">root@web-0${i + 1}</span>:<span style="color:#7AA2F7">~</span># `;
+  const QCMDS = ['apt install -y nginx', 'nginx -t && nginx -s reload', 'nginx -v'];
   const QOUT = [
     (i) => `<span style="color:#9a9aa3">Setting up nginx (1.26.${i}) …</span>`,
-    () => `<span style="color:#9ECE6A">✓ reloaded</span>`,
+    () => `<span style="color:#9ECE6A">syntax is ok · reloaded</span>`,
     () => `nginx version: nginx/1.26.3`,
   ];
   async function runQuad() {
