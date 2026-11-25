@@ -1,0 +1,17 @@
+// Vornel 官网：Cloudflare Workers + 静态资源。纯静态文件，无需构建；部署：在 site/ 目录执行 wrangler deploy。
+{
+  "name": "vornel",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    // 只有 /api/* 先进 Worker，其余直接由静态资源响应（更快、不计 Worker 调用）
+    "run_worker_first": ["/api/*"]
+  },
+  // 绑定自定义域名 vornel.dev（DNS 记录与证书由 Cloudflare 自动创建）
+  "routes": [{ "pattern": "vornel.dev", "custom_domain": true }],
+  "workers_dev": false,
+  "observability": { "enabled": true }
+}

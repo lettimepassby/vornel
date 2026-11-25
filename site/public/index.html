@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="ink">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Vornel — 小巧、原生、端到端加密的远程连接工具</title>
+  <meta name="description" content="Vornel 是一款跨平台的远程连接工具：SSH、SFTP、RDP、VNC、Mosh、Telnet、串口，分屏与同步输入，服务器资源一目了然，主机数据端到端加密同步到你自己的云存储。安装包不到 10 MB。" />
+  <meta name="theme-color" content="#0E0E10" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Vornel — 终端，本该如此" />
+  <meta property="og:description" content="SSH · SFTP · RDP · VNC · Mosh · Telnet · 串口。分屏同步输入，端到端加密同步，安装包不到 10 MB。" />
+  <meta property="og:image" content="https://vornel.dev/og.png" />
+  <meta property="og:url" content="https://vornel.dev/" />
+  <link rel="canonical" href="https://vornel.dev/" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="preload" href="/fonts/geist.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="/i18n.js" defer></script>
+  <script src="/os-icons.js" defer></script>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main" data-i18n="skip">跳到正文</a>
+
+  <!-- ============================================================ 顶栏 -->
+  <header class="nav" id="nav">
+    <a class="brand" href="#top" aria-label="Vornel">
+      <svg viewBox="0 0 64 64" width="26" height="26" aria-hidden="true"><path d="M12 22 L24 45 L36 22" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect class="cur" x="42" y="17" width="10" height="30" rx="2.5"/></svg>
+      <span>vornel</span>
+    </a>
+    <nav class="links" aria-label="页面导航">
+      <a href="#protocols" data-i18n="nav.protocols">协议</a>
+      <a href="#split" data-i18n="nav.split">分屏</a>
+      <a href="#sync" data-i18n="nav.sync">加密同步</a>
+      <a href="#look" data-i18n="nav.look">外观</a>
+      <a href="#download" data-i18n="nav.download">下载</a>
+    </nav>
+    <div class="nav-tools">
+      <button class="ghost-btn" id="lang" type="button" aria-label="切换语言 / Switch language">EN</button>
+      <button class="ghost-btn icon" id="theme" type="button" aria-label="切换浅色 / 深色">
+        <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+      </button>
+      <a class="ghost-btn" href="https://github.com/lettimepassby/vornel" rel="noopener">GitHub</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ============================================================ 首屏 -->
+    <section class="hero" id="top">
+      <div class="glow" aria-hidden="true"></div>
+      <div class="grid-bg" aria-hidden="true"></div>
+      <p class="eyebrow reveal"><span class="pill" id="ver-pill">v0.1</span><span data-i18n="hero.eyebrow">macOS · Windows · iOS 开发中</span></p>
+      <h1 class="reveal" data-i18n="hero.title">终端，<em>本该如此</em>。</h1>
+      <p class="lead reveal" data-i18n="hero.lead">SSH、SFTP、RDP、VNC、Mosh、Telnet、串口——一个不到 10 MB 的原生应用全部搞定。主机、密钥与代码片段端到端加密，同步到<b>你自己的</b>云存储。</p>
+      <div class="cta reveal">
+        <a class="btn primary magnetic" id="dl-main" href="#download">
+          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span id="dl-main-label" data-i18n="hero.download">免费下载</span>
+        </a>
+        <a class="btn" href="#protocols" data-i18n="hero.tour">看看它能做什么</a>
+      </div>
+      <p class="fine reveal" id="dl-fine" data-i18n="hero.fine">个人使用免费 · 源码公开 · 无账号、无遥测</p>
+
+      <!-- 应用窗口（纯 HTML 还原，可交互） -->
+      <div class="window reveal" id="win" aria-label="Vornel 应用界面演示" role="img">
+        <div class="win-bar">
+          <span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="home"><svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM5 13h14a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="1.7"/></svg><span data-i18n="win.hosts">主机</span></span>
+          <span class="wtab on"><i class="dot ok"></i>web-01</span>
+          <span class="wtab"><i class="dot ok"></i>db-primary</span>
+          <span class="wtab"><i class="dot"></i>edge-tokyo</span>
+          <span class="sp"></span>
+          <span class="wtool"><span data-i18n="win.split">分屏</span></span>
+          <span class="wtool on"><span data-i18n="win.look">外观</span></span>
+        </div>
+        <div class="win-body">
+          <div class="term" id="term"><pre id="term-out" aria-live="off"></pre></div>
+          <div class="stats" id="stats">
+            <span><b>CPU</b><em id="s-cpu">12%</em><i class="bar"><i id="s-cpu-bar" style="width:12%"></i></i></span>
+            <span><b data-i18n="win.mem">内存</b><em id="s-mem">1.9G/7.7G</em><i class="bar"><i id="s-mem-bar" style="width:25%"></i></i></span>
+            <span><b data-i18n="win.disk">磁盘</b><em>41%</em></span>
+            <span><b data-i18n="win.load">负载</b><em id="s-load">0.21 0.18 0.12</em></span>
+            <span><b>↓</b><em id="s-rx">1.2M/s</em> <b>↑</b><em id="s-tx">86K/s</em></span>
+            <span class="sp"></span>
+            <span><b data-i18n="win.up">运行</b><em data-i18n="win.upval">42天3时</em></span>
+          </div>
+        </div>
+      </div>
+      <div class="schemes reveal" id="hero-schemes" role="radiogroup" aria-label="终端配色">
+        <span class="hint" data-i18n="hero.try">点一下，换个配色 →</span>
+      </div>
+    </section>
+
+    <!-- ============================================================ 数字 -->
+    <section class="numbers">
+      <div class="num reveal"><b data-count="8.1">8.1</b><span>MB</span><p data-i18n="num.size">macOS 安装包（Apple 芯片）</p></div>
+      <div class="num reveal"><b data-count="7">7</b><span data-i18n="num.protoUnit">种</span><p data-i18n="num.proto">连接协议，一个应用</p></div>
+      <div class="num reveal"><b data-count="0">0</b><span data-i18n="num.zeroUnit">字节</span><p data-i18n="num.zero">明文同步数据上传到云端</p></div>
+      <div class="num reveal"><b data-count="11">11</b><span data-i18n="num.schemesUnit">套</span><p data-i18n="num.schemes">终端配色，随手切换</p></div>
+    </section>
+
+    <!-- ============================================================ 协议 -->
+    <section class="sec" id="protocols">
+      <div class="sec-head reveal">
+        <p class="kicker" data-i18n="proto.kicker">一个应用，所有连接</p>
+        <h2 data-i18n="proto.title">从 Linux 服务器到 Windows 桌面，<br />从路由器串口到跨洋 Mosh。</h2>
+      </div>
+      <div class="cards">
+        <article class="card reveal tilt"><span class="tag">SSH</span><h3 data-i18n="proto.ssh.t">SSH 终端</h3><p data-i18n="proto.ssh.d">基于 xterm.js + WebGL 渲染，跳板机、Agent 转发、主机指纹严格校验，一样不少。</p></article>
+        <article class="card reveal tilt"><span class="tag">SFTP</span><h3 data-i18n="proto.sftp.t">双栏 SFTP</h3><p data-i18n="proto.sftp.d">本地与远端并排浏览，上传、下载、重命名、删除，复用同一条 SSH 连接。</p></article>
+        <article class="card reveal tilt"><span class="tag">RDP</span><h3 data-i18n="proto.rdp.t">远程桌面</h3><p data-i18n="proto.rdp.d">纯 Rust 的 IronRDP，只传输变化区域，直接画到窗口里。</p></article>
+        <article class="card reveal tilt"><span class="tag">VNC</span><h3 data-i18n="proto.vnc.t">VNC</h3><p data-i18n="proto.vnc.d">连接 Linux 桌面、树莓派、虚拟机控制台。</p></article>
+        <article class="card reveal tilt"><span class="tag">Mosh</span><h3 data-i18n="proto.mosh.t">Mosh</h3><p data-i18n="proto.mosh.d">自研实现，基于 UDP，在高延迟和不稳定的网络里依然跟手。</p></article>
+        <article class="card reveal tilt"><span class="tag">Telnet</span><h3 data-i18n="proto.telnet.t">Telnet</h3><p data-i18n="proto.telnet.d">老设备、网络设备、交换机管理口，照样能连。</p></article>
+        <article class="card reveal tilt"><span class="tag">Serial</span><h3 data-i18n="proto.serial.t">串口</h3><p data-i18n="proto.serial.d">USB 转串口直连开发板和路由器，波特率、校验位随手设置。</p></article>
+        <article class="card reveal tilt"><span class="tag">-L -R -D</span><h3 data-i18n="proto.fwd.t">端口转发</h3><p data-i18n="proto.fwd.d">本地、远程、SOCKS5 动态转发，一键启停，状态一目了然。</p></article>
+      </div>
+    </section>
+
+    <!-- ============================================================ 分屏 -->
+    <section class="sec split-sec" id="split">
+      <div class="two">
+        <div class="copy reveal">
+          <p class="kicker" data-i18n="split.kicker">分屏 · 同步输入</p>
+          <h2 data-i18n="split.title">四台服务器，<br />一次敲完。</h2>
+          <p data-i18n="split.d">左右、上下、四宫格自由分屏，从已打开的会话或任意主机里挑。打开“同步输入”，在一个窗格里敲的每个字都会同时发给所有分屏——批量升级、巡检、改配置，再也不用复制粘贴四遍。</p>
+          <label class="switch">
+            <input type="checkbox" id="bc-toggle" checked />
+            <span class="track"><span class="thumb"></span></span>
+            <span data-i18n="split.toggle">同步输入</span>
+          </label>
+        </div>
+        <div class="quad reveal" id="quad" aria-hidden="true">
+          <div class="pane"><div class="ph">web-01</div><pre></pre></div>
+          <div class="pane"><div class="ph">web-02</div><pre></pre></div>
+          <div class="pane"><div class="ph">web-03</div><pre></pre></div>
+          <div class="pane"><div class="ph">web-04</div><pre></pre></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 主机页 -->
+    <section class="sec" id="hosts">
+      <div class="two rev">
+        <div class="copy reveal">
+          <p class="kicker" data-i18n="hosts.kicker">主机一目了然</p>
+          <h2 data-i18n="hosts.title">认得出每一台机器。</h2>
+          <p data-i18n="hosts.d">连上一次就自动识别系统，卡片换上对应的 logo；分组可以自定义图标和颜色；搜索框里直接输入 <code>ssh user@host</code> 就能连。最近连过的排在最前面，终端底部实时显示 CPU、内存、磁盘与网速。</p>
+          <ul class="ticks">
+            <li data-i18n="hosts.t1">从文件导入主机、密码、密钥与已知主机</li>
+            <li data-i18n="hosts.t2">右键菜单、拖动排序、临时重命名</li>
+            <li data-i18n="hosts.t3">密码加密保存在本机 Vault</li>
+          </ul>
+        </div>
+        <div class="hostgrid reveal" id="hostgrid" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 同步 -->
+    <section class="sec sync-sec" id="sync">
+      <div class="sec-head reveal">
+        <p class="kicker" data-i18n="sync.kicker">端到端加密同步</p>
+        <h2 data-i18n="sync.title">你的服务器清单，<br />只属于你。</h2>
+        <p class="sub" data-i18n="sync.d">没有 Vornel 账号，也没有 Vornel 服务器。数据在你的设备上用主密码派生的密钥加密后，才写进你自己选的存储——云端看到的只有一堆密文。</p>
+      </div>
+      <div class="flow reveal" id="flow">
+        <div class="node dev"><span class="ico">⌘</span><b>MacBook</b><small data-i18n="sync.plain">明文只在这里</small></div>
+        <div class="pipe"><i class="pkt"></i><i class="pkt"></i><i class="pkt"></i><span>XChaCha20-Poly1305</span></div>
+        <div class="node cloud">
+          <b data-i18n="sync.yours">你的存储</b>
+          <div class="chips"><span>S3</span><span>R2</span><span>MinIO</span><span>WebDAV</span><span>Google Drive</span><span>OneDrive</span><span>Dropbox</span><span data-i18n="sync.folder">本地文件夹 / iCloud</span></div>
+          <code class="cipher" id="cipher">a9f3…e01c</code>
+        </div>
+        <div class="pipe rev"><i class="pkt"></i><i class="pkt"></i><i class="pkt"></i><span>Argon2id</span></div>
+        <div class="node dev"><span class="ico">⊞</span><b>Windows</b><small data-i18n="sync.plain2">在这里解密</small></div>
+      </div>
+      <div class="facts reveal">
+        <div><b>Argon2id</b><p data-i18n="sync.f1">主密码只用来派生密钥，从不上传。</p></div>
+        <div><b data-i18n="sync.f2t">按字段合并</b><p data-i18n="sync.f2">混合逻辑时钟 + 字段级最后写入者胜，两台设备同时改也不会互相覆盖。</p></div>
+        <div><b data-i18n="sync.f3t">私钥默认不离开本机</b><p data-i18n="sync.f3">密码和私钥是否同步由你逐项决定。</p></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 外观 -->
+    <section class="sec" id="look">
+      <div class="sec-head reveal">
+        <p class="kicker" data-i18n="look.kicker">随心外观</p>
+        <h2 data-i18n="look.title">好看，是生产力的一部分。</h2>
+        <p class="sub" data-i18n="look.d">深色 Ink 与浅色 Paper 两套界面，6 套精选字体组合，11 种终端配色，字号、行高、光标样式在会话旁边的面板里实时调整。</p>
+      </div>
+      <div class="palette reveal" id="palette"></div>
+      <div class="fonts reveal">
+        <div><span class="f" style="font-family:'Geist',sans-serif">Geist</span><small data-i18n="look.ui">界面</small></div>
+        <div><span class="f mono">Geist Mono</span><small data-i18n="look.mono">标识</small></div>
+        <div><span class="f term-font">Maple Mono</span><small data-i18n="look.term">终端</small></div>
+        <div><span class="f" style="font-family:'Iowan Old Style','Songti SC',serif" data-i18n="look.cjk">中文增强包</span><small data-i18n="look.cjkd">按需下载</small></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 原生 -->
+    <section class="sec native" id="native">
+      <div class="sec-head reveal">
+        <p class="kicker" data-i18n="native.kicker">小巧 · 原生 · 安全</p>
+        <h2 data-i18n="native.title">不塞一整个浏览器进来。</h2>
+      </div>
+      <div class="bento">
+        <div class="b big reveal">
+          <h3 data-i18n="native.b1t">Rust 内核 + 系统 WebView</h3>
+          <p data-i18n="native.b1">连接、加密、同步全部用 Rust 实现；界面使用系统自带的 WebView，不打包 Chromium。安装包只有同类 Electron 应用的零头。</p>
+          <div class="sizes">
+            <div><span data-i18n="native.mac">macOS</span><i style="--w:8.1"></i><b>8.1 MB</b></div>
+            <div><span data-i18n="native.win">Windows</span><i style="--w:6.3"></i><b>6.3 MB</b></div>
+            <div class="muted"><span data-i18n="native.electron">典型 Electron 应用</span><i style="--w:100"></i><b>100+ MB</b></div>
+          </div>
+        </div>
+        <div class="b reveal"><h3 data-i18n="native.b2t">没有遥测</h3><p data-i18n="native.b2">不收集使用数据，不需要注册账号。</p></div>
+        <div class="b reveal"><h3 data-i18n="native.b3t">签名更新</h3><p data-i18n="native.b3">每个更新包都有数字签名，被篡改的安装包会被拒绝。</p></div>
+        <div class="b reveal"><h3 data-i18n="native.b4t">严格的主机指纹</h3><p data-i18n="native.b4">首次连接记录指纹，指纹变化立即拦截并提示。</p></div>
+        <div class="b reveal"><h3 data-i18n="native.b5t">真机测试</h3><p data-i18n="native.b5">每次发布前，在真实的 sshd、xrdp、x11vnc、mosh-server、S3、WebDAV 上自动跑一遍端到端测试。</p></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 下载 -->
+    <section class="sec download" id="download">
+      <div class="sec-head reveal">
+        <p class="kicker" data-i18n="dl.kicker">下载</p>
+        <h2 data-i18n="dl.title">现在就试试。</h2>
+        <p class="sub"><span data-i18n="dl.latest">最新版本</span> <b class="mono" id="dl-version">—</b><span id="dl-date"></span></p>
+      </div>
+      <div class="dl-grid">
+        <a class="dl reveal" id="dl-mac-arm" href="/api/download/mac-arm">
+          <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path id="apple" fill="currentColor" d=""/></svg>
+          <b>macOS</b><span data-i18n="dl.arm">Apple 芯片（M 系列）</span><small class="mono" id="sz-mac-arm">.dmg</small>
+        </a>
+        <a class="dl reveal" id="dl-mac-intel" href="/api/download/mac-intel">
+          <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><use href="#apple" /></svg>
+          <b>macOS</b><span data-i18n="dl.intel">Intel 芯片</span><small class="mono" id="sz-mac-intel">.dmg</small>
+        </a>
+        <a class="dl reveal" id="dl-win" href="/api/download/windows">
+          <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M3 5.5 10.5 4.5v7H3zm8.5-1.1L21 3v8.5h-9.5zM3 12.5h7.5v7L3 18.5zm8.5 0H21V21l-9.5-1.4z"/></svg>
+          <b>Windows</b><span data-i18n="dl.win">Windows 10 / 11（x64）</span><small class="mono" id="sz-win">.exe</small>
+        </a>
+        <div class="dl soon reveal">
+          <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10.5 18.5h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          <b>iOS</b><span data-i18n="dl.ios">开发中</span><small class="mono">iPhone · iPad</small>
+        </div>
+      </div>
+      <p class="fine center reveal" data-i18n="dl.note">macOS 版暂未经过苹果公证：首次打开请右键点击应用，选择“打开”。已安装的 Vornel 会自动提示更新。</p>
+    </section>
+
+    <!-- ============================================================ 许可 -->
+    <section class="sec license reveal">
+      <div class="lic">
+        <div>
+          <h3 data-i18n="lic.t">源码公开，个人免费</h3>
+          <p data-i18n="lic.d">Vornel 以 PolyForm Noncommercial 1.0.0 许可发布：可以自由查看、修改、个人与非商业使用；禁止商业用途。所有依赖均为宽松许可。</p>
+        </div>
+        <a class="btn" href="https://github.com/lettimepassby/vornel" rel="noopener" data-i18n="lic.btn">在 GitHub 上查看源码</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span class="brand small"><svg viewBox="0 0 64 64" width="18" height="18" aria-hidden="true"><path d="M12 22 L24 45 L36 22" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect class="cur" x="42" y="17" width="10" height="30" rx="2.5"/></svg>vornel</span>
+    <span class="sp"></span>
+    <a href="https://github.com/lettimepassby/vornel/releases" rel="noopener" data-i18n="foot.releases">更新日志</a>
+    <a href="https://github.com/lettimepassby/vornel/issues" rel="noopener" data-i18n="foot.issues">反馈问题</a>
+    <a href="https://github.com/lettimepassby/vornel/blob/main/LICENSE.md" rel="noopener" data-i18n="foot.license">许可</a>
+  </footer>
+</body>
+</html>
