@@ -65,7 +65,7 @@
 
   let container = $state<HTMLDivElement>();
   let term: Terminal | undefined;
-  let line: InputLine | undefined;
+  let inputLine: InputLine | undefined;
   let paneEl = $state<HTMLDivElement>();
   let fit: FitAddon | undefined;
   let webgl: WebglAddon | undefined;
@@ -109,20 +109,20 @@
 
   /** 写入会话但不抢焦点（分屏同步输入） */
   export function write(data: string) {
-    line?.input(data);
+    inputLine?.input(data);
     if (sessionId) void api.sessionWrite(sessionId, data).catch(() => {});
   }
 
   /** 把文字发送到终端（代码片段等）。 */
   export function send(text: string) {
-    line?.input(text);
+    inputLine?.input(text);
     if (sessionId) void api.sessionWrite(sessionId, text).catch(() => {});
     term?.focus();
   }
 
   /** 用户在这个终端里的输入：键盘、粘贴、接受联想 */
   function userInput(out: string) {
-    line?.input(out);
+    inputLine?.input(out);
     if (sessionId) void api.sessionWrite(sessionId, out).catch(() => {});
     oninput?.(out);
     if (out === '\r' || out === '\x03') sug = [];
@@ -152,11 +152,11 @@
   }
 
   function updateSuggest() {
-    if (!term || !line || !prefs.commandSuggest || !active || sugHidden || pane.state !== 'connected') {
+    if (!term || !inputLine || !prefs.commandSuggest || !active || sugHidden || pane.state !== 'connected') {
       if (sug.length) sug = [];
       return;
     }
-    const r = line.read();
+    const r = inputLine.read();
     if (r === 'pending') return; // 回显还没到，保持现状
     const b = term.buffer.active;
     if (!r || !r.atEnd || b.viewportY !== b.baseY) {
@@ -199,9 +199,9 @@
 
   function acceptSuggestion(i: number) {
     const s = sug[i];
-    if (!s || !line) return;
+    if (!s || !inputLine) return;
     // 键入的文字可能比屏幕回显更新：只要建议仍以它开头，补上剩下的部分
-    const cur = line.exact ? line.typed : sugTyped;
+    const cur = inputLine.exact ? inputLine.typed : sugTyped;
     sug = [];
     if (!s.text.startsWith(cur)) return;
     const rest = s.text.slice(cur.length);
@@ -412,13 +412,13 @@
         screenReaderMode: untrack(() => prefs.screenReader),
       });
       termFont = term.options.fontFamily ?? 'monospace';
-      line = new InputLine(term, (cmd) => {
+      inputLine = new InputLine(term, (cmd) => {
         if (prefs.commandSuggest && prefs.commandHistory) recordCommand(host.id, cmd);
       });
       if (untrack(() => prefs.commandSuggest)) void loadHistory();
       term.onWriteParsed(() => {
-        line?.flush();
-        if (sug.length || line?.tracking) scheduleSuggest();
+        inputLine?.flush();
+        if (sug.length || inputLine?.tracking) scheduleSuggest();
       });
       fit = new FitAddon();
       term.loadAddon(fit);
@@ -487,8 +487,8 @@
       delete (window as unknown as { __vornelTerminals?: Record<string, () => string> }).__vornelTerminals?.[hookKey];
       ro.disconnect();
       cancelAnimationFrame(sugFrame);
-      line?.dispose();
-      line = undefined;
+      inputLine?.dispose();
+      inputLine = undefined;
       if (sessionId) void api.sessionClose(sessionId).catch(() => {});
       sessionId = null;
       webgl?.dispose();
