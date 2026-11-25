@@ -16,7 +16,7 @@ async function shot(name, { width, height, theme, lang, mobile = false }) {
   const page = await ctx.newPage();
   page.on('pageerror', (e) => problems.push(`${name}: ${e.message}`));
   // 本地静态服务没有 Worker，/api/release 404 属于预期
-  page.on('console', (m) => m.type() === 'error' && !(base.startsWith('http://127.') && /404/.test(m.text())) && problems.push(`${name}: console ${m.text()}`));
+  page.on('console', (m) => m.type() === 'error' && !(base.startsWith('http://127.') && /404/.test(m.text())) && !/cloudflareinsights/.test(m.text()) && problems.push(`${name}: console ${m.text()}`));
   await page.goto(base, { waitUntil: 'networkidle' });
   // 滚动一遍，触发所有出现动画
   const h = await page.evaluate(() => document.body.scrollHeight);
@@ -26,6 +26,9 @@ async function shot(name, { width, height, theme, lang, mobile = false }) {
   }
   await page.evaluate(() => scrollTo(0, 0));
   await page.waitForTimeout(3500);
+  // 下载区必须拿到真实版本号
+  const ver = await page.evaluate(() => document.querySelector('#dl-version')?.textContent);
+  if (!base.startsWith('http://127.') && !/^v\d+\.\d+\.\d+$/.test(ver || '')) problems.push(`${name}: 没有显示最新版本（${ver}）`);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
   if (overflow > 1) problems.push(`${name}: 页面横向溢出 ${overflow}px`);
   await page.screenshot({ path: `shots/${name}-top.png` });
