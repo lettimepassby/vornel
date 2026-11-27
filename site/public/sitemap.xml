@@ -1,2 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://vornel.dev/</loc><changefreq>weekly</changefreq></url></urlset>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://vornel.dev/</loc>
+    <lastmod>2026-11-27</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://vornel.dev/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://vornel.dev/en/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://vornel.dev/en/" />
+  </url>
+  <url>
+    <loc>https://vornel.dev/en/</loc>
+    <lastmod>2026-11-27</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://vornel.dev/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://vornel.dev/en/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://vornel.dev/en/" />
+  </url>
+</urlset>

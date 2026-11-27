@@ -3,20 +3,143 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Vornel — 小巧、原生、端到端加密的远程连接工具</title>
-  <meta name="description" content="Vornel 是一款跨平台的远程连接工具：SSH、SFTP、RDP、VNC、Mosh、Telnet、串口，分屏与同步输入，服务器资源一目了然，主机数据端到端加密同步到你自己的云存储。安装包不到 10 MB。" />
+  <script src="/boot.js"></script>
+  <title data-i18n="seo.title">Vornel — 跨平台 SSH 客户端：SFTP、RDP、VNC、Mosh，端到端加密同步</title>
+  <meta name="description" data-i18n-content="seo.desc" content="Vornel 是一款小巧的原生 SSH 客户端，支持 macOS 与 Windows：SSH 终端、SFTP、RDP 远程桌面、VNC、Mosh、Telnet、串口与端口转发，分屏同步输入，主机数据端到端加密同步到你自己的云存储。个人免费，安装包不到 10 MB。" />
   <meta name="theme-color" content="#0E0E10" />
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content="Vornel — 终端，本该如此" />
-  <meta property="og:description" content="SSH · SFTP · RDP · VNC · Mosh · Telnet · 串口。分屏同步输入，端到端加密同步，安装包不到 10 MB。" />
-  <meta property="og:image" content="https://vornel.dev/og.png" />
-  <meta property="og:url" content="https://vornel.dev/" />
   <link rel="canonical" href="https://vornel.dev/" />
+  <link rel="alternate" hreflang="zh" href="https://vornel.dev/" />
+  <link rel="alternate" hreflang="en" href="https://vornel.dev/en/" />
+  <link rel="alternate" hreflang="x-default" href="https://vornel.dev/en/" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Vornel" />
+  <meta property="og:locale" content="zh_CN" />
+  <meta property="og:locale:alternate" content="en_US" />
+  <meta property="og:url" content="https://vornel.dev/" />
+  <meta property="og:title" data-i18n-content="seo.ogTitle" content="Vornel — 终端，本该如此" />
+  <meta property="og:description" data-i18n-content="seo.ogDesc" content="SSH · SFTP · RDP · VNC · Mosh · Telnet · 串口。分屏同步输入，端到端加密同步，安装包不到 10 MB。" />
+  <meta property="og:image" data-i18n-content="seo.ogImage" content="https://vornel.dev/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" data-i18n-content="seo.ogAlt" content="Vornel：终端，本该如此。适用于 macOS 与 Windows 的 SSH、SFTP、RDP、VNC、Mosh、Telnet、串口客户端。" />
   <meta name="twitter:card" content="summary_large_image" />
+  <!-- seo:ld 由 site/build.mjs 生成 -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://vornel.dev/#app",
+        "name": "Vornel",
+        "url": "https://vornel.dev/",
+        "description": "Vornel 是一款小巧的原生 SSH 客户端，支持 macOS 与 Windows：SSH 终端、SFTP、RDP 远程桌面、VNC、Mosh、Telnet、串口与端口转发，分屏同步输入，主机数据端到端加密同步到你自己的云存储。个人免费，安装包不到 10 MB。",
+        "applicationCategory": "DeveloperApplication",
+        "applicationSubCategory": "SSH 客户端",
+        "operatingSystem": "macOS 13+, Windows 10, Windows 11",
+        "image": "https://vornel.dev/og.png",
+        "downloadUrl": "https://vornel.dev/#download",
+        "installUrl": "https://vornel.dev/#download",
+        "releaseNotes": "https://github.com/lettimepassby/vornel/releases",
+        "license": "https://polyformproject.org/licenses/noncommercial/1.0.0/",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "featureList": [
+          "SSH 终端",
+          "双栏 SFTP",
+          "远程桌面",
+          "VNC",
+          "Mosh",
+          "Telnet",
+          "串口",
+          "端口转发",
+          "同步输入",
+          "端到端加密同步"
+        ],
+        "inLanguage": [
+          "zh-CN",
+          "en"
+        ],
+        "sameAs": [
+          "https://github.com/lettimepassby/vornel"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://vornel.dev/#site",
+        "name": "Vornel",
+        "url": "https://vornel.dev/",
+        "inLanguage": "zh-CN"
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://vornel.dev/#faq",
+        "url": "https://vornel.dev/",
+        "inLanguage": "zh-CN",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Vornel 是什么？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Vornel 是一款跨平台的远程连接客户端，适用于 macOS 和 Windows，iOS 版正在开发中。一个应用里集成了 SSH 终端、SFTP 文件传输、RDP 远程桌面、VNC、Mosh、Telnet 和串口；主机、密钥和代码片段可以端到端加密后，同步到你自己的云存储。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Vornel 免费吗？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "个人与非商业使用完全免费：没有付费版、没有广告，也不需要注册账号。源码以 PolyForm Noncommercial 1.0.0 许可公开在 GitHub 上，该许可不允许商业用途。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "支持哪些系统？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "macOS 13 及以上（Apple 芯片与 Intel 芯片各有安装包），以及 Windows 10 / 11（x64）。iPhone 与 iPad 版正在开发中。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "加密同步怎样保护我的数据？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "所有数据先在你的设备上加密：主密码经 Argon2id 派生出密钥，再用 XChaCha20-Poly1305 加密，然后才写进你选择的存储——AWS S3、Cloudflare R2、MinIO 等 S3 兼容存储，WebDAV，或者本地文件夹。Vornel 没有自己的服务器，主密码也从不离开你的设备，存储服务商只能看到密文。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "能在多台服务器上同时执行同一条命令吗？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "可以。把窗口分成最多四个窗格并打开“同步输入”，在任意一个窗格里敲的内容会同时发给所有窗格。常用的命令还可以存成代码片段，一键执行。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "macOS 提示无法打开或无法验证开发者，怎么办？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "macOS 版暂未经过苹果公证。macOS 15 及以上：先尝试打开一次，然后到“系统设置 → 隐私与安全性”，点“仍要打开”。macOS 13 / 14：在“应用程序”里右键点击 Vornel，选择“打开”。只需操作一次，之后就能正常打开，并会自动更新。"
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <!-- /seo:ld -->
   <link rel="preload" href="/fonts/geist.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/styles.css" />
-  <script src="/i18n.js" defer></script>
   <script src="/os-icons.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
@@ -29,7 +152,7 @@
       <svg viewBox="0 0 64 64" width="26" height="26" aria-hidden="true"><path d="M12 22 L24 45 L36 22" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect class="cur" x="42" y="17" width="10" height="30" rx="2.5"/></svg>
       <span>vornel</span>
     </a>
-    <nav class="links" aria-label="页面导航">
+    <nav class="links" aria-label="页面导航" data-i18n-aria-label="aria.nav">
       <a href="#protocols" data-i18n="nav.protocols">协议</a>
       <a href="#split" data-i18n="nav.split">分屏</a>
       <a href="#sync" data-i18n="nav.sync">加密同步</a>
@@ -37,8 +160,8 @@
       <a href="#download" data-i18n="nav.download">下载</a>
     </nav>
     <div class="nav-tools">
-      <button class="ghost-btn" id="lang" type="button" aria-label="切换语言 / Switch language">EN</button>
-      <button class="ghost-btn icon" id="theme" type="button" aria-label="切换浅色 / 深色">
+      <a class="ghost-btn" id="lang" href="/en/" hreflang="en" lang="en" aria-label="English version">EN</a>
+      <button class="ghost-btn icon" id="theme" type="button" aria-label="切换浅色 / 深色" data-i18n-aria-label="aria.theme">
         <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
       </button>
       <a class="ghost-btn" href="https://github.com/lettimepassby/vornel" rel="noopener">GitHub</a>
@@ -63,7 +186,7 @@
       <p class="fine reveal" id="dl-fine" data-i18n="hero.fine">个人使用免费 · 源码公开 · 无账号、无遥测</p>
 
       <!-- 应用窗口（纯 HTML 还原，可交互） -->
-      <div class="window reveal" id="win" aria-label="Vornel 应用界面演示" role="img">
+      <div class="window reveal" id="win" aria-label="Vornel 应用界面演示" data-i18n-aria-label="aria.demo" role="img">
         <div class="win-bar">
           <span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>
           <span class="home"><svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM5 13h14a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="1.7"/></svg><span data-i18n="win.hosts">主机</span></span>
@@ -87,7 +210,7 @@
           </div>
         </div>
       </div>
-      <div class="schemes reveal" id="hero-schemes" role="radiogroup" aria-label="终端配色">
+      <div class="schemes reveal" id="hero-schemes" role="radiogroup" aria-label="终端配色" data-i18n-aria-label="aria.schemes">
         <span class="hint" data-i18n="hero.try">点一下，换个配色 →</span>
       </div>
     </section>
@@ -246,7 +369,41 @@
           <b>iOS</b><span data-i18n="dl.ios">开发中</span><small class="mono">iPhone · iPad</small>
         </div>
       </div>
-      <p class="fine center reveal" data-i18n="dl.note">macOS 版暂未经过苹果公证：首次打开请右键点击应用，选择“打开”。已安装的 Vornel 会自动提示更新。</p>
+      <p class="fine center reveal" data-i18n="dl.note">macOS 版暂未经过苹果公证：首次打开时，macOS 15 及以上请到“系统设置 → 隐私与安全性”点“仍要打开”，更早的系统请右键点击应用并选择“打开”。已安装的 Vornel 会自动提示更新。</p>
+    </section>
+
+    <!-- ============================================================ 常见问题 -->
+    <section class="sec faq-sec" id="faq">
+      <div class="sec-head reveal">
+        <p class="kicker" data-i18n="faq.kicker">常见问题</p>
+        <h2 data-i18n="faq.title">你可能想知道的。</h2>
+      </div>
+      <div class="faq">
+        <details class="qa reveal" open>
+          <summary><h3 data-i18n="faq.q1">Vornel 是什么？</h3></summary>
+          <p data-i18n="faq.a1">Vornel 是一款跨平台的远程连接客户端，适用于 macOS 和 Windows，iOS 版正在开发中。一个应用里集成了 SSH 终端、SFTP 文件传输、RDP 远程桌面、VNC、Mosh、Telnet 和串口；主机、密钥和代码片段可以端到端加密后，同步到你自己的云存储。</p>
+        </details>
+        <details class="qa reveal">
+          <summary><h3 data-i18n="faq.q2">Vornel 免费吗？</h3></summary>
+          <p data-i18n="faq.a2">个人与非商业使用完全免费：没有付费版、没有广告，也不需要注册账号。源码以 PolyForm Noncommercial 1.0.0 许可公开在 GitHub 上，该许可不允许商业用途。</p>
+        </details>
+        <details class="qa reveal">
+          <summary><h3 data-i18n="faq.q3">支持哪些系统？</h3></summary>
+          <p data-i18n="faq.a3">macOS 13 及以上（Apple 芯片与 Intel 芯片各有安装包），以及 Windows 10 / 11（x64）。iPhone 与 iPad 版正在开发中。</p>
+        </details>
+        <details class="qa reveal">
+          <summary><h3 data-i18n="faq.q4">加密同步怎样保护我的数据？</h3></summary>
+          <p data-i18n="faq.a4">所有数据先在你的设备上加密：主密码经 Argon2id 派生出密钥，再用 XChaCha20-Poly1305 加密，然后才写进你选择的存储——AWS S3、Cloudflare R2、MinIO 等 S3 兼容存储，WebDAV，或者本地文件夹。Vornel 没有自己的服务器，主密码也从不离开你的设备，存储服务商只能看到密文。</p>
+        </details>
+        <details class="qa reveal">
+          <summary><h3 data-i18n="faq.q5">能在多台服务器上同时执行同一条命令吗？</h3></summary>
+          <p data-i18n="faq.a5">可以。把窗口分成最多四个窗格并打开“同步输入”，在任意一个窗格里敲的内容会同时发给所有窗格。常用的命令还可以存成代码片段，一键执行。</p>
+        </details>
+        <details class="qa reveal">
+          <summary><h3 data-i18n="faq.q6">macOS 提示无法打开或无法验证开发者，怎么办？</h3></summary>
+          <p data-i18n="faq.a6">macOS 版暂未经过苹果公证。macOS 15 及以上：先尝试打开一次，然后到“系统设置 → 隐私与安全性”，点“仍要打开”。macOS 13 / 14：在“应用程序”里右键点击 Vornel，选择“打开”。只需操作一次，之后就能正常打开，并会自动更新。</p>
+        </details>
+      </div>
     </section>
 
     <!-- ============================================================ 许可 -->
@@ -264,6 +421,7 @@
   <footer class="foot">
     <span class="brand small"><svg viewBox="0 0 64 64" width="18" height="18" aria-hidden="true"><path d="M12 22 L24 45 L36 22" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect class="cur" x="42" y="17" width="10" height="30" rx="2.5"/></svg>vornel</span>
     <span class="sp"></span>
+    <a href="#faq" data-i18n="foot.faq">常见问题</a>
     <a href="https://github.com/lettimepassby/vornel/releases" rel="noopener" data-i18n="foot.releases">更新日志</a>
     <a href="https://github.com/lettimepassby/vornel/issues" rel="noopener" data-i18n="foot.issues">反馈问题</a>
     <a href="https://github.com/lettimepassby/vornel/blob/main/LICENSE.md" rel="noopener" data-i18n="foot.license">许可</a>

@@ -22,26 +22,42 @@
   };
 
   // ------------------------------------------------------------ 语言
-  const zh = {};
-  $$('[data-i18n]').forEach((el) => (zh[el.dataset.i18n] = el.innerHTML));
-  let lang = store.get('vornel.lang') || (/^zh/i.test(navigator.language) ? 'zh' : 'en');
-  const t = (k) => (lang === 'en' ? window.I18N_EN[k] : window.I18N_ZH_DYN[k] ?? zh[k]) ?? k;
-  function applyLang() {
-    document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
-    $$('[data-i18n]').forEach((el) => {
-      const v = lang === 'en' ? window.I18N_EN[el.dataset.i18n] : zh[el.dataset.i18n];
-      if (v !== undefined) el.innerHTML = v;
-    });
-    $('#lang').textContent = lang === 'en' ? '中文' : 'EN';
-    document.title = lang === 'en' ? 'Vornel — a small, native, end-to-end encrypted remote connection app' : 'Vornel — 小巧、原生、端到端加密的远程连接工具';
-    renderSchemes();
-    renderRelease();
+  // 中文页 / 与英文页 /en/ 是两个静态页面（英文页由 site/build.mjs 生成），这里只处理脚本里生成的文字。
+  const lang = document.documentElement.lang.startsWith('en') ? 'en' : 'zh';
+  const other = lang === 'en' ? 'zh' : 'en';
+  const DYN = {
+    zh: { 'dyn.dlMac': '下载 macOS 版', 'dyn.dlWin': '下载 Windows 版', 'dyn.dl': '免费下载', 'dyn.released': '发布于', 'dyn.auto': '跟随界面' },
+    en: { 'dyn.dlMac': 'Download for macOS', 'dyn.dlWin': 'Download for Windows', 'dyn.dl': 'Download for free', 'dyn.released': 'released', 'dyn.auto': 'Match UI' },
+  };
+  const t = (k) => DYN[lang][k] ?? k;
+  const otherPath = other === 'en' ? '/en/' : '/';
+  /** 去另一种语言：记住选择，并停在同一个区块 */
+  function goOther(e) {
+    store.set('vornel.lang', other);
+    e.currentTarget.href = otherPath + location.hash;
   }
-  $('#lang').addEventListener('click', () => {
-    lang = lang === 'en' ? 'zh' : 'en';
-    store.set('vornel.lang', lang);
-    applyLang();
-  });
+  $('#lang').addEventListener('click', goOther);
+
+  // 第一次来、浏览器语言和页面不一样：在底部提示一下（不自动跳转）
+  function langTip() {
+    if (store.get('vornel.lang')) return;
+    const langs = navigator.languages?.length ? navigator.languages : [navigator.language || ''];
+    const zhFirst = /^zh/i.test(langs[0]);
+    if (lang === 'zh' ? langs.some((l) => /^zh/i.test(l)) : !zhFirst) return;
+    const tip = document.createElement('div');
+    tip.className = 'lang-tip';
+    tip.lang = other === 'en' ? 'en' : 'zh-CN';
+    tip.innerHTML =
+      other === 'en'
+        ? '<span>This page is also available in English.</span><a href="/en/" hreflang="en">Read in English</a><button type="button" aria-label="Close">×</button>'
+        : '<span>本页有中文版。</span><a href="/" hreflang="zh">查看中文</a><button type="button" aria-label="关闭">×</button>';
+    $('a', tip).addEventListener('click', goOther);
+    $('button', tip).addEventListener('click', () => {
+      store.set('vornel.lang', lang);
+      tip.remove();
+    });
+    document.body.appendChild(tip);
+  }
 
   // ------------------------------------------------------------ 主题
   let theme = store.get('vornel.theme') || 'ink';
@@ -425,7 +441,8 @@
   // ------------------------------------------------------------ 启动
   renderHosts();
   applyTheme();
-  applyLang();
+  renderRelease();
+  langTip();
   paintTerminal();
   effects();
   void runScript();

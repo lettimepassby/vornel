@@ -1,4 +1,4 @@
-// Vornel 官网：Cloudflare Workers + 静态资源。纯静态文件，无需构建；部署：在 site/ 目录执行 wrangler deploy。
+// Vornel 官网：Cloudflare Workers + 静态资源。改了 index.html 或 i18n.en.mjs 后先运行 node site/build.mjs（生成英文页 /en/ 与结构化数据）；部署：在 site/ 目录执行 wrangler deploy。
 {
   "name": "vornel",
   "main": "src/worker.js",

@@ -1,6 +1,6 @@
 name: 官网截图
 
-# 用真实浏览器打开官网（site/public）截图并检查脚本错误、横向溢出。部署由维护者在本机执行（site/ 下 wrangler deploy）。
+# 检查生成的英文页是最新的；用真实浏览器打开官网（site/public）截图并检查脚本错误、横向溢出与搜索引擎标记。部署由维护者在本机执行（site/ 下 wrangler deploy）。
 on:
   push:
     branches: [develop, main]
@@ -19,6 +19,8 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+      - name: 英文页与结构化数据是最新的
+        run: node site/build.mjs --check
       - name: 启动本地静态服务
         run: |
           cd site/public

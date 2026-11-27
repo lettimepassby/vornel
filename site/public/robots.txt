@@ -1,3 +1,6 @@
 User-agent: *
 Allow: /
+# 下载跳转与版本接口，不需要收录
+Disallow: /api/
+
 Sitemap: https://vornel.dev/sitemap.xml

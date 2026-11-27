@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en" data-theme="ink">
+<head>
+  <meta charset="utf-8" />
+  <!-- 由 site/build.mjs 根据 index.html 与 i18n.en.mjs 生成，不要直接修改 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <script src="/boot.js"></script>
+  <title data-i18n="seo.title">Vornel — SSH client with SFTP, RDP, VNC and encrypted sync</title>
+  <meta name="description" data-i18n-content="seo.desc" content="A small, native SSH client for macOS and Windows with SFTP, RDP, VNC, Mosh, Telnet and serial, split panes with broadcast input, and end-to-end encrypted sync to storage you own. Free for personal use." />
+  <meta name="theme-color" content="#0E0E10" />
+  <link rel="canonical" href="https://vornel.dev/en/" />
+  <link rel="alternate" hreflang="zh" href="https://vornel.dev/" />
+  <link rel="alternate" hreflang="en" href="https://vornel.dev/en/" />
+  <link rel="alternate" hreflang="x-default" href="https://vornel.dev/en/" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Vornel" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:locale:alternate" content="zh_CN" />
+  <meta property="og:url" content="https://vornel.dev/en/" />
+  <meta property="og:title" data-i18n-content="seo.ogTitle" content="Vornel — The terminal, as it should be" />
+  <meta property="og:description" data-i18n-content="seo.ogDesc" content="SSH · SFTP · RDP · VNC · Mosh · Telnet · Serial. Broadcast input across split panes, end-to-end encrypted sync, under 10 MB." />
+  <meta property="og:image" data-i18n-content="seo.ogImage" content="https://vornel.dev/og-en.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" data-i18n-content="seo.ogAlt" content="Vornel — the terminal, as it should be. SSH, SFTP, RDP, VNC, Mosh, Telnet and serial for macOS and Windows." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <!-- seo:ld 由 site/build.mjs 生成 -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://vornel.dev/#app",
+        "name": "Vornel",
+        "url": "https://vornel.dev/en/",
+        "description": "A small, native SSH client for macOS and Windows with SFTP, RDP, VNC, Mosh, Telnet and serial, split panes with broadcast input, and end-to-end encrypted sync to storage you own. Free for personal use.",
+        "applicationCategory": "DeveloperApplication",
+        "applicationSubCategory": "SSH client",
+        "operatingSystem": "macOS 13+, Windows 10, Windows 11",
+        "image": "https://vornel.dev/og-en.png",
+        "downloadUrl": "https://vornel.dev/en/#download",
+        "installUrl": "https://vornel.dev/en/#download",
+        "releaseNotes": "https://github.com/lettimepassby/vornel/releases",
+        "license": "https://polyformproject.org/licenses/noncommercial/1.0.0/",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "featureList": [
+          "SSH terminal",
+          "Dual-pane SFTP",
+          "Remote desktop",
+          "VNC",
+          "Mosh",
+          "Telnet",
+          "Serial",
+          "Port forwarding",
+          "Broadcast input",
+          "End-to-end encrypted sync"
+        ],
+        "inLanguage": [
+          "zh-CN",
+          "en"
+        ],
+        "sameAs": [
+          "https://github.com/lettimepassby/vornel"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://vornel.dev/#site",
+        "name": "Vornel",
+        "url": "https://vornel.dev/",
+        "inLanguage": "en"
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://vornel.dev/en/#faq",
+        "url": "https://vornel.dev/en/",
+        "inLanguage": "en",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is Vornel?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Vornel is a cross-platform remote connection client for macOS and Windows, with iOS in progress. One app brings together an SSH terminal, SFTP file transfer, RDP remote desktop, VNC, Mosh, Telnet and serial — and your hosts, keys and snippets can be end-to-end encrypted and synced to cloud storage you own."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is Vornel free?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes, for personal and non-commercial use: there is no paid tier, no ads and no account to sign up for. The source is available on GitHub under the PolyForm Noncommercial 1.0.0 licence, which does not permit commercial use."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which platforms are supported?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "macOS 13 or later, with separate installers for Apple silicon and Intel, and Windows 10 / 11 (x64). An iPhone and iPad version is in progress."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does encrypted sync protect my data?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Everything is encrypted on your device first: a key is derived from your master password with Argon2id, the data is sealed with XChaCha20-Poly1305, and only then is it written to the storage you pick — S3-compatible storage such as AWS S3, Cloudflare R2 or MinIO, WebDAV, or a local folder. There is no Vornel server and your master password never leaves your device, so the storage provider only ever sees ciphertext."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I run the same command on several servers at once?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Split the window into up to four panes and turn on broadcast input: whatever you type in one pane goes to all of them. Commands you use often can be saved as snippets and run with one click."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "macOS says Vornel can’t be opened or verified. What now?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The macOS build isn’t notarised by Apple yet. On macOS 15 or later, try to open it once, then go to System Settings → Privacy & Security and click “Open Anyway”. On macOS 13 or 14, right-click Vornel in Applications and choose “Open”. You only need to do this once; after that it opens normally and keeps itself up to date."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <!-- /seo:ld -->
+  <link rel="preload" href="/fonts/geist.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="/os-icons.js" defer></script>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main" data-i18n="skip">Skip to content</a>
+
+  <!-- ============================================================ 顶栏 -->
+  <header class="nav" id="nav">
+    <a class="brand" href="#top" aria-label="Vornel">
+      <svg viewBox="0 0 64 64" width="26" height="26" aria-hidden="true"><path d="M12 22 L24 45 L36 22" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect class="cur" x="42" y="17" width="10" height="30" rx="2.5"/></svg>
+      <span>vornel</span>
+    </a>
+    <nav class="links" aria-label="Page navigation" data-i18n-aria-label="aria.nav">
+      <a href="#protocols" data-i18n="nav.protocols">Protocols</a>
+      <a href="#split" data-i18n="nav.split">Split view</a>
+      <a href="#sync" data-i18n="nav.sync">Encrypted sync</a>
+      <a href="#look" data-i18n="nav.look">Appearance</a>
+      <a href="#download" data-i18n="nav.download">Download</a>
+    </nav>
+    <div class="nav-tools">
+      <a class="ghost-btn" id="lang" href="/" hreflang="zh" lang="zh-CN" aria-label="中文版">中文</a>
+      <button class="ghost-btn icon" id="theme" type="button" aria-label="Toggle light / dark" data-i18n-aria-label="aria.theme">
+        <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+      </button>
+      <a class="ghost-btn" href="https://github.com/lettimepassby/vornel" rel="noopener">GitHub</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ============================================================ 首屏 -->
+    <section class="hero" id="top">
+      <div class="glow" aria-hidden="true"></div>
+      <div class="grid-bg" aria-hidden="true"></div>
+      <p class="eyebrow reveal"><span class="pill" id="ver-pill">v0.1</span><span data-i18n="hero.eyebrow">macOS · Windows · iOS in progress</span></p>
+      <h1 class="reveal" data-i18n="hero.title">The terminal, <em>as it should be</em>.</h1>
+      <p class="lead reveal" data-i18n="hero.lead">SSH, SFTP, RDP, VNC, Mosh, Telnet and serial — all in one native app under 10 MB. Hosts, keys and snippets are end-to-end encrypted and synced to storage <b>you</b> own.</p>
+      <div class="cta reveal">
+        <a class="btn primary magnetic" id="dl-main" href="#download">
+          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span id="dl-main-label" data-i18n="hero.download">Download for free</span>
+        </a>
+        <a class="btn" href="#protocols" data-i18n="hero.tour">See what it can do</a>
+      </div>
+      <p class="fine reveal" id="dl-fine" data-i18n="hero.fine">Free for personal use · Source available · No account, no telemetry</p>
+
+      <!-- 应用窗口（纯 HTML 还原，可交互） -->
+      <div class="window reveal" id="win" aria-label="Vornel app interface demo" data-i18n-aria-label="aria.demo" role="img">
+        <div class="win-bar">
+          <span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="home"><svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM5 13h14a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="1.7"/></svg><span data-i18n="win.hosts">Hosts</span></span>
+          <span class="wtab on"><i class="dot ok"></i>web-01</span>
+          <span class="wtab"><i class="dot ok"></i>db-primary</span>
+          <span class="wtab"><i class="dot"></i>edge-tokyo</span>
+          <span class="sp"></span>
+          <span class="wtool"><span data-i18n="win.split">Split</span></span>
+          <span class="wtool on"><span data-i18n="win.look">Style</span></span>
+        </div>
+        <div class="win-body">
+          <div class="term" id="term"><pre id="term-out" aria-live="off"></pre></div>
+          <div class="stats" id="stats">
+            <span><b>CPU</b><em id="s-cpu">12%</em><i class="bar"><i id="s-cpu-bar" style="width:12%"></i></i></span>
+            <span><b data-i18n="win.mem">Mem</b><em id="s-mem">1.9G/7.7G</em><i class="bar"><i id="s-mem-bar" style="width:25%"></i></i></span>
+            <span><b data-i18n="win.disk">Disk</b><em>41%</em></span>
+            <span><b data-i18n="win.load">Load</b><em id="s-load">0.21 0.18 0.12</em></span>
+            <span><b>↓</b><em id="s-rx">1.2M/s</em> <b>↑</b><em id="s-tx">86K/s</em></span>
+            <span class="sp"></span>
+            <span><b data-i18n="win.up">Up</b><em data-i18n="win.upval">42d 3h</em></span>
+          </div>
+        </div>
+      </div>
+      <div class="schemes reveal" id="hero-schemes" role="radiogroup" aria-label="Terminal colour scheme" data-i18n-aria-label="aria.schemes">
+        <span class="hint" data-i18n="hero.try">Tap to change the colours →</span>
+      </div>
+    </section>
+
+    <!-- ============================================================ 数字 -->
+    <section class="numbers">
+      <div class="num reveal"><b data-count="8.1">8.1</b><span>MB</span><p data-i18n="num.size">macOS installer (Apple silicon)</p></div>
+      <div class="num reveal"><b data-count="7">7</b><span data-i18n="num.protoUnit"></span><p data-i18n="num.proto">protocols, one app</p></div>
+      <div class="num reveal"><b data-count="0">0</b><span data-i18n="num.zeroUnit">bytes</span><p data-i18n="num.zero">of plaintext sync data uploaded</p></div>
+      <div class="num reveal"><b data-count="11">11</b><span data-i18n="num.schemesUnit"></span><p data-i18n="num.schemes">terminal colour schemes</p></div>
+    </section>
+
+    <!-- ============================================================ 协议 -->
+    <section class="sec" id="protocols">
+      <div class="sec-head reveal">
+        <p class="kicker" data-i18n="proto.kicker">One app, every connection</p>
+        <h2 data-i18n="proto.title">From Linux servers to Windows desktops,<br />from a router’s serial port to Mosh across an ocean.</h2>
+      </div>
+      <div class="cards">
+        <article class="card reveal tilt"><span class="tag">SSH</span><h3 data-i18n="proto.ssh.t">SSH terminal</h3><p data-i18n="proto.ssh.d">xterm.js with WebGL rendering, jump hosts, agent forwarding and strict host-key checking.</p></article>
+        <article class="card reveal tilt"><span class="tag">SFTP</span><h3 data-i18n="proto.sftp.t">Dual-pane SFTP</h3><p data-i18n="proto.sftp.d">Local and remote side by side — upload, download, rename, delete, over the same SSH connection.</p></article>
+        <article class="card reveal tilt"><span class="tag">RDP</span><h3 data-i18n="proto.rdp.t">Remote desktop</h3><p data-i18n="proto.rdp.d">Pure-Rust IronRDP that only transfers the regions that changed, painted straight into the window.</p></article>
+        <article class="card reveal tilt"><span class="tag">VNC</span><h3 data-i18n="proto.vnc.t">VNC</h3><p data-i18n="proto.vnc.d">Linux desktops, Raspberry Pis, virtual machine consoles.</p></article>
+        <article class="card reveal tilt"><span class="tag">Mosh</span><h3 data-i18n="proto.mosh.t">Mosh</h3><p data-i18n="proto.mosh.d">Our own implementation over UDP — stays responsive on laggy, flaky networks.</p></article>
+        <article class="card reveal tilt"><span class="tag">Telnet</span><h3 data-i18n="proto.telnet.t">Telnet</h3><p data-i18n="proto.telnet.d">Old gear, network appliances, switch management ports — still reachable.</p></article>
+        <article class="card reveal tilt"><span class="tag">Serial</span><h3 data-i18n="proto.serial.t">Serial</h3><p data-i18n="proto.serial.d">USB-to-serial straight into dev boards and routers, with baud rate and parity at hand.</p></article>
+        <article class="card reveal tilt"><span class="tag">-L -R -D</span><h3 data-i18n="proto.fwd.t">Port forwarding</h3><p data-i18n="proto.fwd.d">Local, remote and SOCKS5 dynamic forwarding, started and stopped with one click.</p></article>
+      </div>
+    </section>
+
+    <!-- ============================================================ 分屏 -->
+    <section class="sec split-sec" id="split">
+      <div class="two">
+        <div class="copy reveal">
+          <p class="kicker" data-i18n="split.kicker">Split view · Broadcast input</p>
+          <h2 data-i18n="split.title">Four servers.<br />Type it once.</h2>
+          <p data-i18n="split.d">Split side by side, top and bottom, or into a 2×2 grid, picking from open sessions or any host. Turn on broadcast input and every keystroke in one pane goes to all of them — upgrades, audits and config changes without pasting four times.</p>
+          <label class="switch">
+            <input type="checkbox" id="bc-toggle" checked />
+            <span class="track"><span class="thumb"></span></span>
+            <span data-i18n="split.toggle">Broadcast input</span>
+          </label>
+        </div>
+        <div class="quad reveal" id="quad" aria-hidden="true">
+          <div class="pane"><div class="ph">web-01</div><pre></pre></div>
+          <div class="pane"><div class="ph">web-02</div><pre></pre></div>
+          <div class="pane"><div class="ph">web-03</div><pre></pre></div>
+          <div class="pane"><div class="ph">web-04</div><pre></pre></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 主机页 -->
+    <section class="sec" id="hosts">
+      <div class="two rev">
+        <div class="copy reveal">
+          <p class="kicker" data-i18n="hosts.kicker">Every host at a glance</p>
+          <h2 data-i18n="hosts.title">Recognise every machine.</h2>
+          <p data-i18n="hosts.d">Connect once and Vornel detects the OS and shows its logo; groups get their own icon and colour; type <code>ssh user@host</code> into the search box to connect right away. Recently used hosts float to the top, and a live bar under the terminal shows CPU, memory, disk and network.</p>
+          <ul class="ticks">
+            <li data-i18n="hosts.t1">Import hosts, passwords, keys and known hosts from a file</li>
+            <li data-i18n="hosts.t2">Context menus, drag to reorder, rename a tab on the fly</li>
+            <li data-i18n="hosts.t3">Passwords encrypted in the local vault</li>
+          </ul>
+        </div>
+        <div class="hostgrid reveal" id="hostgrid" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 同步 -->
+    <section class="sec sync-sec" id="sync">
+      <div class="sec-head reveal">
+        <p class="kicker" data-i18n="sync.kicker">End-to-end encrypted sync</p>
+        <h2 data-i18n="sync.title">Your server list<br />belongs to you.</h2>
+        <p class="sub" data-i18n="sync.d">There is no Vornel account and no Vornel server. Data is encrypted on your device with a key derived from your master password before it is written to the storage you choose — the cloud only ever sees ciphertext.</p>
+      </div>
+      <div class="flow reveal" id="flow">
+        <div class="node dev"><span class="ico">⌘</span><b>MacBook</b><small data-i18n="sync.plain">Plaintext lives here</small></div>
+        <div class="pipe"><i class="pkt"></i><i class="pkt"></i><i class="pkt"></i><span>XChaCha20-Poly1305</span></div>
+        <div class="node cloud">
+          <b data-i18n="sync.yours">Your storage</b>
+          <div class="chips"><span>S3</span><span>R2</span><span>MinIO</span><span>WebDAV</span><span>Google Drive</span><span>OneDrive</span><span>Dropbox</span><span data-i18n="sync.folder">Local folder / iCloud</span></div>
+          <code class="cipher" id="cipher">a9f3…e01c</code>
+        </div>
+        <div class="pipe rev"><i class="pkt"></i><i class="pkt"></i><i class="pkt"></i><span>Argon2id</span></div>
+        <div class="node dev"><span class="ico">⊞</span><b>Windows</b><small data-i18n="sync.plain2">Decrypted here</small></div>
+      </div>
+      <div class="facts reveal">
+        <div><b>Argon2id</b><p data-i18n="sync.f1">Your master password only derives the key. It is never uploaded.</p></div>
+        <div><b data-i18n="sync.f2t">Field-level merge</b><p data-i18n="sync.f2">Hybrid logical clocks and per-field last-writer-wins, so two devices editing at once don’t clobber each other.</p></div>
+        <div><b data-i18n="sync.f3t">Private keys stay home</b><p data-i18n="sync.f3">You decide, item by item, whether passwords and keys are synced.</p></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 外观 -->
+    <section class="sec" id="look">
+      <div class="sec-head reveal">
+        <p class="kicker" data-i18n="look.kicker">Make it yours</p>
+        <h2 data-i18n="look.title">Looking good is part of the job.</h2>
+        <p class="sub" data-i18n="look.d">Dark Ink and light Paper interfaces, six curated font pairings, eleven terminal colour schemes — font size, line height and cursor tuned live in a panel beside your session.</p>
+      </div>
+      <div class="palette reveal" id="palette"></div>
+      <div class="fonts reveal">
+        <div><span class="f" style="font-family:'Geist',sans-serif">Geist</span><small data-i18n="look.ui">Interface</small></div>
+        <div><span class="f mono">Geist Mono</span><small data-i18n="look.mono">Labels</small></div>
+        <div><span class="f term-font">Maple Mono</span><small data-i18n="look.term">Terminal</small></div>
+        <div><span class="f" style="font-family:'Iowan Old Style','Songti SC',serif" data-i18n="look.cjk">CJK add-ons</span><small data-i18n="look.cjkd">Downloaded on demand</small></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 原生 -->
+    <section class="sec native" id="native">
+      <div class="sec-head reveal">
+        <p class="kicker" data-i18n="native.kicker">Small · Native · Secure</p>
+        <h2 data-i18n="native.title">No browser stuffed inside.</h2>
+      </div>
+      <div class="bento">
+        <div class="b big reveal">
+          <h3 data-i18n="native.b1t">Rust core + system WebView</h3>
+          <p data-i18n="native.b1">Connections, encryption and sync are written in Rust; the interface uses the WebView your OS already ships, with no bundled Chromium. The installer is a fraction of a typical Electron app.</p>
+          <div class="sizes">
+            <div><span data-i18n="native.mac">macOS</span><i style="--w:8.1"></i><b>8.1 MB</b></div>
+            <div><span data-i18n="native.win">Windows</span><i style="--w:6.3"></i><b>6.3 MB</b></div>
+            <div class="muted"><span data-i18n="native.electron">Typical Electron app</span><i style="--w:100"></i><b>100+ MB</b></div>
+          </div>
+        </div>
+        <div class="b reveal"><h3 data-i18n="native.b2t">No telemetry</h3><p data-i18n="native.b2">No usage data collected, no sign-up required.</p></div>
+        <div class="b reveal"><h3 data-i18n="native.b3t">Signed updates</h3><p data-i18n="native.b3">Every update is signed; tampered packages are rejected.</p></div>
+        <div class="b reveal"><h3 data-i18n="native.b4t">Strict host keys</h3><p data-i18n="native.b4">Fingerprints are recorded on first connect, and any change is blocked and flagged.</p></div>
+        <div class="b reveal"><h3 data-i18n="native.b5t">Tested for real</h3><p data-i18n="native.b5">Every release runs end-to-end tests against real sshd, xrdp, x11vnc, mosh-server, S3 and WebDAV.</p></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 下载 -->
+    <section class="sec download" id="download">
+      <div class="sec-head reveal">
+        <p class="kicker" data-i18n="dl.kicker">Download</p>
+        <h2 data-i18n="dl.title">Try it now.</h2>
+        <p class="sub"><span data-i18n="dl.latest">Latest version</span> <b class="mono" id="dl-version">—</b><span id="dl-date"></span></p>
+      </div>
+      <div class="dl-grid">
+        <a class="dl reveal" id="dl-mac-arm" href="/api/download/mac-arm">
+          <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path id="apple" fill="currentColor" d=""/></svg>
+          <b>macOS</b><span data-i18n="dl.arm">Apple silicon (M-series)</span><small class="mono" id="sz-mac-arm">.dmg</small>
+        </a>
+        <a class="dl reveal" id="dl-mac-intel" href="/api/download/mac-intel">
+          <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><use href="#apple" /></svg>
+          <b>macOS</b><span data-i18n="dl.intel">Intel</span><small class="mono" id="sz-mac-intel">.dmg</small>
+        </a>
+        <a class="dl reveal" id="dl-win" href="/api/download/windows">
+          <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M3 5.5 10.5 4.5v7H3zm8.5-1.1L21 3v8.5h-9.5zM3 12.5h7.5v7L3 18.5zm8.5 0H21V21l-9.5-1.4z"/></svg>
+          <b>Windows</b><span data-i18n="dl.win">Windows 10 / 11 (x64)</span><small class="mono" id="sz-win">.exe</small>
+        </a>
+        <div class="dl soon reveal">
+          <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10.5 18.5h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          <b>iOS</b><span data-i18n="dl.ios">In progress</span><small class="mono">iPhone · iPad</small>
+        </div>
+      </div>
+      <p class="fine center reveal" data-i18n="dl.note">The macOS build isn’t notarised by Apple yet. The first time you open it on macOS 15 or later, go to System Settings → Privacy &amp; Security and click “Open Anyway”; on earlier versions, right-click the app and choose “Open”. Installed copies of Vornel update themselves.</p>
+    </section>
+
+    <!-- ============================================================ 常见问题 -->
+    <section class="sec faq-sec" id="faq">
+      <div class="sec-head reveal">
+        <p class="kicker" data-i18n="faq.kicker">FAQ</p>
+        <h2 data-i18n="faq.title">Questions, answered.</h2>
+      </div>
+      <div class="faq">
+        <details class="qa reveal" open>
+          <summary><h3 data-i18n="faq.q1">What is Vornel?</h3></summary>
+          <p data-i18n="faq.a1">Vornel is a cross-platform remote connection client for macOS and Windows, with iOS in progress. One app brings together an SSH terminal, SFTP file transfer, RDP remote desktop, VNC, Mosh, Telnet and serial — and your hosts, keys and snippets can be end-to-end encrypted and synced to cloud storage you own.</p>
+        </details>
+        <details class="qa reveal">
+          <summary><h3 data-i18n="faq.q2">Is Vornel free?</h3></summary>
+          <p data-i18n="faq.a2">Yes, for personal and non-commercial use: there is no paid tier, no ads and no account to sign up for. The source is available on GitHub under the PolyForm Noncommercial 1.0.0 licence, which does not permit commercial use.</p>
+        </details>
+        <details class="qa reveal">
+          <summary><h3 data-i18n="faq.q3">Which platforms are supported?</h3></summary>
+          <p data-i18n="faq.a3">macOS 13 or later, with separate installers for Apple silicon and Intel, and Windows 10 / 11 (x64). An iPhone and iPad version is in progress.</p>
+        </details>
+        <details class="qa reveal">
+          <summary><h3 data-i18n="faq.q4">How does encrypted sync protect my data?</h3></summary>
+          <p data-i18n="faq.a4">Everything is encrypted on your device first: a key is derived from your master password with Argon2id, the data is sealed with XChaCha20-Poly1305, and only then is it written to the storage you pick — S3-compatible storage such as AWS S3, Cloudflare R2 or MinIO, WebDAV, or a local folder. There is no Vornel server and your master password never leaves your device, so the storage provider only ever sees ciphertext.</p>
+        </details>
+        <details class="qa reveal">
+          <summary><h3 data-i18n="faq.q5">Can I run the same command on several servers at once?</h3></summary>
+          <p data-i18n="faq.a5">Yes. Split the window into up to four panes and turn on broadcast input: whatever you type in one pane goes to all of them. Commands you use often can be saved as snippets and run with one click.</p>
+        </details>
+        <details class="qa reveal">
+          <summary><h3 data-i18n="faq.q6">macOS says Vornel can’t be opened or verified. What now?</h3></summary>
+          <p data-i18n="faq.a6">The macOS build isn’t notarised by Apple yet. On macOS 15 or later, try to open it once, then go to System Settings → Privacy &amp; Security and click “Open Anyway”. On macOS 13 or 14, right-click Vornel in Applications and choose “Open”. You only need to do this once; after that it opens normally and keeps itself up to date.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- ============================================================ 许可 -->
+    <section class="sec license reveal">
+      <div class="lic">
+        <div>
+          <h3 data-i18n="lic.t">Source available, free for personal use</h3>
+          <p data-i18n="lic.d">Vornel is released under the PolyForm Noncommercial 1.0.0 licence: read it, change it, use it personally or non-commercially — commercial use is not permitted. Every dependency is permissively licensed.</p>
+        </div>
+        <a class="btn" href="https://github.com/lettimepassby/vornel" rel="noopener" data-i18n="lic.btn">View the source on GitHub</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span class="brand small"><svg viewBox="0 0 64 64" width="18" height="18" aria-hidden="true"><path d="M12 22 L24 45 L36 22" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect class="cur" x="42" y="17" width="10" height="30" rx="2.5"/></svg>vornel</span>
+    <span class="sp"></span>
+    <a href="#faq" data-i18n="foot.faq">FAQ</a>
+    <a href="https://github.com/lettimepassby/vornel/releases" rel="noopener" data-i18n="foot.releases">Changelog</a>
+    <a href="https://github.com/lettimepassby/vornel/issues" rel="noopener" data-i18n="foot.issues">Report an issue</a>
+    <a href="https://github.com/lettimepassby/vornel/blob/main/LICENSE.md" rel="noopener" data-i18n="foot.license">Licence</a>
+  </footer>
+</body>
+</html>

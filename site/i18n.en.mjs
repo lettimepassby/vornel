@@ -1,6 +1,19 @@
-// 中英文切换：中文写在 HTML 里（无脚本时也能看、对搜索引擎友好），英文在这里。
-// 带 data-i18n 的元素切换语言时整体替换内容；脚本里生成的文字用 t('dyn.xxx')。
-window.I18N_EN = {
+// 英文页 /en/ 的文字：site/build.mjs 用它把中文页 public/index.html 翻译成 public/en/index.html。
+// 键对应 HTML 里的 data-i18n（替换元素内容）和 data-i18n-<属性名>（替换该属性，例如 data-i18n-content、data-i18n-aria-label）。
+export default {
+  // <head> 与搜索引擎
+  'seo.title': 'Vornel — SSH client with SFTP, RDP, VNC and encrypted sync',
+  'seo.desc':
+    'A small, native SSH client for macOS and Windows with SFTP, RDP, VNC, Mosh, Telnet and serial, split panes with broadcast input, and end-to-end encrypted sync to storage you own. Free for personal use.',
+  'seo.ogTitle': 'Vornel — The terminal, as it should be',
+  'seo.ogDesc': 'SSH · SFTP · RDP · VNC · Mosh · Telnet · Serial. Broadcast input across split panes, end-to-end encrypted sync, under 10 MB.',
+  'seo.ogAlt': 'Vornel — the terminal, as it should be. SSH, SFTP, RDP, VNC, Mosh, Telnet and serial for macOS and Windows.',
+  'seo.ogImage': 'https://vornel.dev/og-en.png',
+  // 屏幕阅读器标签
+  'aria.nav': 'Page navigation',
+  'aria.theme': 'Toggle light / dark',
+  'aria.demo': 'Vornel app interface demo',
+  'aria.schemes': 'Terminal colour scheme',
   skip: 'Skip to content',
   'nav.protocols': 'Protocols',
   'nav.split': 'Split view',
@@ -106,7 +119,28 @@ window.I18N_EN = {
   'dl.win': 'Windows 10 / 11 (x64)',
   'dl.ios': 'In progress',
   'dl.note':
-    'The macOS build isn’t notarised yet: the first time, right-click the app and choose “Open”. Installed copies of Vornel update themselves.',
+    'The macOS build isn’t notarised by Apple yet. The first time you open it on macOS 15 or later, go to System Settings → Privacy &amp; Security and click “Open Anyway”; on earlier versions, right-click the app and choose “Open”. Installed copies of Vornel update themselves.',
+  'faq.kicker': 'FAQ',
+  'faq.title': 'Questions, answered.',
+  'faq.q1': 'What is Vornel?',
+  'faq.a1':
+    'Vornel is a cross-platform remote connection client for macOS and Windows, with iOS in progress. One app brings together an SSH terminal, SFTP file transfer, RDP remote desktop, VNC, Mosh, Telnet and serial — and your hosts, keys and snippets can be end-to-end encrypted and synced to cloud storage you own.',
+  'faq.q2': 'Is Vornel free?',
+  'faq.a2':
+    'Yes, for personal and non-commercial use: there is no paid tier, no ads and no account to sign up for. The source is available on GitHub under the PolyForm Noncommercial 1.0.0 licence, which does not permit commercial use.',
+  'faq.q3': 'Which platforms are supported?',
+  'faq.a3':
+    'macOS 13 or later, with separate installers for Apple silicon and Intel, and Windows 10 / 11 (x64). An iPhone and iPad version is in progress.',
+  'faq.q4': 'How does encrypted sync protect my data?',
+  'faq.a4':
+    'Everything is encrypted on your device first: a key is derived from your master password with Argon2id, the data is sealed with XChaCha20-Poly1305, and only then is it written to the storage you pick — S3-compatible storage such as AWS S3, Cloudflare R2 or MinIO, WebDAV, or a local folder. There is no Vornel server and your master password never leaves your device, so the storage provider only ever sees ciphertext.',
+  'faq.q5': 'Can I run the same command on several servers at once?',
+  'faq.a5':
+    'Yes. Split the window into up to four panes and turn on broadcast input: whatever you type in one pane goes to all of them. Commands you use often can be saved as snippets and run with one click.',
+  'faq.q6': 'macOS says Vornel can’t be opened or verified. What now?',
+  'faq.a6':
+    'The macOS build isn’t notarised by Apple yet. On macOS 15 or later, try to open it once, then go to System Settings → Privacy &amp; Security and click “Open Anyway”. On macOS 13 or 14, right-click Vornel in Applications and choose “Open”. You only need to do this once; after that it opens normally and keeps itself up to date.',
+  'foot.faq': 'FAQ',
   'lic.t': 'Source available, free for personal use',
   'lic.d':
     'Vornel is released under the PolyForm Noncommercial 1.0.0 licence: read it, change it, use it personally or non-commercially — commercial use is not permitted. Every dependency is permissively licensed.',
@@ -114,18 +148,4 @@ window.I18N_EN = {
   'foot.releases': 'Changelog',
   'foot.issues': 'Report an issue',
   'foot.license': 'Licence',
-  // 脚本里生成的文字
-  'dyn.dlMac': 'Download for macOS',
-  'dyn.dlWin': 'Download for Windows',
-  'dyn.dl': 'Download for free',
-  'dyn.released': 'released',
-  'dyn.auto': 'Match UI',
-};
-
-window.I18N_ZH_DYN = {
-  'dyn.dlMac': '下载 macOS 版',
-  'dyn.dlWin': '下载 Windows 版',
-  'dyn.dl': '免费下载',
-  'dyn.released': '发布于',
-  'dyn.auto': '跟随界面',
 };
