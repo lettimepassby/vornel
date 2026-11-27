@@ -261,6 +261,10 @@ h1 em {
   background-clip: text;
   color: transparent;
 }
+/* 中文标题窄屏时不要把“本该如此”拆开 */
+h1:lang(zh) em {
+  white-space: nowrap;
+}
 :root[data-theme='paper'] h1 em {
   background-image: linear-gradient(100deg, #4353d1 10%, #8e44ad 50%, #0e7490 85%);
 }
